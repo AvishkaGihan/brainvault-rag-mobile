@@ -1,0 +1,61 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Node.js / npm / yarn
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log
+yarn-error.log
+lerna-debug.log
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# IDE & Editors
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+*.code-workspace
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Thumbs.db:encryptable
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Uploads & Temporary Files
+uploads/
+tmp/
+temp/
+*.tmp
+
+# Test & Coverage
+coverage/
+.nyc_output/
+dist-test/
+
+# Build Artifacts
+.tsc-out/

@@ -1,0 +1,130 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# IDE & Editors
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+*.code-workspace
+
+# Node.js / npm / yarn
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log
+yarn-error.log
+lerna-debug.log
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Flutter / Dart
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+pubspec.lock
+coverage/
+*.g.dart
+
+# Mobile Build Artifacts
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/ios/Pods/
+/ios/Podfile.lock
+/build/
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Uploads & Temporary Files
+uploads/
+tmp/
+temp/
+*.tmp
+
+# OS & Misc
+.DS_Store
+*.swp
+*.swo
+*~
+.history
+.vscode-test
+.test-results
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Gradle (Android)
+.gradle/
+.gradle
+gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Xcode (iOS)
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Android Studio
+.idea/
+*.iml
+local.properties
+gradle-wrapper.jar
+.gradle
+
+# macOS specific
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows specific
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.lnk
