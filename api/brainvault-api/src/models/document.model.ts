@@ -39,4 +39,32 @@ export class DocumentModel {
       updatedAt: toDate(data.updatedAt),
     };
   }
+
+  /**
+   * Converts a partial or full Document entity to Firestore format.
+   * Ensures timestamps are handled correctly (using ServerValue for updates if needed,
+   * but usually explicit Dates are passed from Service layer or created here).
+   */
+  static toFirestore(data: Partial<Document>): Record<string, any> {
+    const firestoreData: Record<string, any> = { ...data };
+
+    // Remove id as it's the document key
+    delete firestoreData.id;
+
+    // Convert Dates to Timestamps
+    if (data.createdAt instanceof Date) {
+      firestoreData.createdAt = firestore.Timestamp.fromDate(data.createdAt);
+    }
+
+    // Always update updatedAt to now if not explicitly provided,
+    // or ensure provided Date is converted.
+    // Ideally, the Service layer controls business logic, but Model ensures correctness.
+    if (data.updatedAt instanceof Date) {
+      firestoreData.updatedAt = firestore.Timestamp.fromDate(data.updatedAt);
+    } else {
+      firestoreData.updatedAt = firestore.Timestamp.now();
+    }
+
+    return firestoreData;
+  }
 }
