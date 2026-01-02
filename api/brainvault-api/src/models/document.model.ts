@@ -67,4 +67,14 @@ export class DocumentModel {
 
     return firestoreData;
   }
+
+  /**
+   * Reference to the user's documents collection.
+   * Enforces the path structure: /users/{userId}/documents
+   */
+  private static getCollectionRef(
+    userId: string
+  ): firestore.CollectionReference {
+    return db.collection("users").doc(userId).collection("documents");
+  }
 }
