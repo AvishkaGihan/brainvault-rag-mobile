@@ -71,4 +71,38 @@ export class ChatSessionModel {
       .doc(documentId)
       .collection("chats");
   }
+
+  // ---------------------------------------------------------------------------------
+  // CRUD Operations
+  // ---------------------------------------------------------------------------------
+
+  /**
+   * Creates a new chat session.
+   * Typically initialized when a user starts chatting about a document.
+   */
+  static async createSession(
+    userId: string,
+    documentId: string,
+    sessionId?: string
+  ): Promise<ChatSession> {
+    const collectionRef = this.getCollectionRef(userId, documentId);
+    const docRef = sessionId
+      ? collectionRef.doc(sessionId)
+      : collectionRef.doc();
+
+    const sessionData = {
+      documentId,
+      userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      messageCount: 0,
+    };
+
+    await docRef.set(this.toFirestore(sessionData));
+
+    const snapshot = await docRef.get();
+    const created = this.fromFirestore(snapshot);
+
+    return created!;
+  }
 }
