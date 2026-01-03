@@ -151,4 +151,16 @@ export class DocumentModel {
     const docRef = this.getCollectionRef(userId).doc(documentId);
     await docRef.delete();
   }
+
+  /**
+   * List all documents for a user, ordered by createdAt desc.
+   */
+  static async list(userId: string): Promise<Document[]> {
+    const collectionRef = this.getCollectionRef(userId);
+    const snapshot = await collectionRef.orderBy("createdAt", "desc").get();
+
+    return snapshot.docs
+      .map((doc) => this.fromFirestore(doc))
+      .filter((doc): doc is Document => doc !== null);
+  }
 }
