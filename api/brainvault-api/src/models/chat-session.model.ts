@@ -153,4 +153,23 @@ export class ChatSessionModel {
       updatedAt: firestore.Timestamp.now(),
     });
   }
+
+  /**
+   * Updates session metadata (e.g. force update timestamp).
+   */
+  static async update(
+    userId: string,
+    documentId: string,
+    sessionId: string,
+    updates: Partial<ChatSession>
+  ): Promise<void> {
+    const docRef = this.getCollectionRef(userId, documentId).doc(sessionId);
+
+    const updateData = this.toFirestore({
+      ...updates,
+      updatedAt: new Date(),
+    });
+
+    await docRef.update(updateData);
+  }
 }
