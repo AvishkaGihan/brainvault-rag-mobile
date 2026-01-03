@@ -135,4 +135,22 @@ export class ChatSessionModel {
       .map((doc) => this.fromFirestore(doc))
       .filter((session): session is ChatSession => session !== null);
   }
+
+  /**
+   * Updates the message count and last active timestamp for a session.
+   * Called whenever a new message is added.
+   */
+  static async updateMessageCount(
+    userId: string,
+    documentId: string,
+    sessionId: string,
+    countChange: number = 1
+  ): Promise<void> {
+    const docRef = this.getCollectionRef(userId, documentId).doc(sessionId);
+
+    await docRef.update({
+      messageCount: firestore.FieldValue.increment(countChange),
+      updatedAt: firestore.Timestamp.now(),
+    });
+  }
 }
