@@ -124,4 +124,31 @@ export class DocumentModel {
     const snapshot = await docRef.get();
     return this.fromFirestore(snapshot);
   }
+
+  /**
+   * Update a document.
+   */
+  static async update(
+    userId: string,
+    documentId: string,
+    updates: Partial<Document>
+  ): Promise<void> {
+    const docRef = this.getCollectionRef(userId).doc(documentId);
+
+    // Ensure updatedAt is refreshed
+    const updateData = this.toFirestore({
+      ...updates,
+      updatedAt: new Date(),
+    });
+
+    await docRef.update(updateData);
+  }
+
+  /**
+   * Delete a document.
+   */
+  static async delete(userId: string, documentId: string): Promise<void> {
+    const docRef = this.getCollectionRef(userId).doc(documentId);
+    await docRef.delete();
+  }
 }
