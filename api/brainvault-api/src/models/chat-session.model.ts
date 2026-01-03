@@ -31,4 +31,28 @@ export class ChatSessionModel {
       messageCount: data.messageCount ?? 0,
     };
   }
+
+  /**
+   * Converts a partial ChatSession entity to Firestore format.
+   */
+  static toFirestore(data: Partial<ChatSession>): Record<string, any> {
+    const firestoreData: Record<string, any> = { ...data };
+
+    // Remove id as it's the document key
+    delete firestoreData.id;
+
+    // Convert Dates to Timestamps
+    if (data.createdAt instanceof Date) {
+      firestoreData.createdAt = firestore.Timestamp.fromDate(data.createdAt);
+    }
+
+    // Always handle updatedAt
+    if (data.updatedAt instanceof Date) {
+      firestoreData.updatedAt = firestore.Timestamp.fromDate(data.updatedAt);
+    } else {
+      firestoreData.updatedAt = firestore.Timestamp.now();
+    }
+
+    return firestoreData;
+  }
 }
