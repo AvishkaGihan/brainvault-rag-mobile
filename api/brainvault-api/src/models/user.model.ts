@@ -75,4 +75,39 @@ export class UserModel {
     const snapshot = await docRef.get();
     return this.fromFirestore(snapshot);
   }
+
+  /**
+   * Creates a new user document if it doesn't exist.
+   * Typically called by auth middleware or on first login.
+   */
+  static async createUser(
+    user: Omit<User, "createdAt" | "updatedAt" | "documentCount">
+  ): Promise<User> {
+    const docRef = this.getCollectionRef().doc(user.id);
+
+    // Check if exists first to avoid overwriting existing data
+    const existing = await docRef.get();
+    if (existing.exists) {
+      return this.fromFirestore(existing)!;
+    }
+
+    const userData = {
+      ...user,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      documentCount: 0,
+      settings: user.settings || { theme: "system" },
+    };
+
+    await docRef.set(this.toFirestore(userData));
+
+    const snapshot = await docRef.get();
+    const created = this.fromFirestore(snapshot);
+
+    if (!created) {
+      throw new Error("Failed to create user document");
+    }
+
+    return created;
+  }
 }
