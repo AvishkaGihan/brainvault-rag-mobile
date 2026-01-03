@@ -62,4 +62,17 @@ export class UserModel {
   private static getCollectionRef(): firestore.CollectionReference {
     return db.collection("users");
   }
+
+  // -----------------------------------------------------------------------------------
+  // User Management
+  // -----------------------------------------------------------------------------------
+
+  /**
+   * Retrieves a user by their Firebase Auth UID.
+   */
+  static async findById(userId: string): Promise<User | null> {
+    const docRef = this.getCollectionRef().doc(userId);
+    const snapshot = await docRef.get();
+    return this.fromFirestore(snapshot);
+  }
 }
