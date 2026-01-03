@@ -108,4 +108,23 @@ export class MessageModel {
 
     return created;
   }
+
+  /**
+   * List messages for a specific chat session.
+   * Ordered by creation time ascending (for chat history display).
+   */
+  static async list(
+    userId: string,
+    documentId: string,
+    chatId: string
+  ): Promise<Message[]> {
+    const collectionRef = this.getCollectionRef(userId, documentId, chatId);
+
+    // Order by createdAt ascending so the conversation flows naturally
+    const snapshot = await collectionRef.orderBy("createdAt", "asc").get();
+
+    return snapshot.docs
+      .map((doc) => this.fromFirestore(doc))
+      .filter((msg): msg is Message => msg !== null);
+  }
 }
