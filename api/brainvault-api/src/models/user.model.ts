@@ -55,4 +55,11 @@ export class UserModel {
 
     return firestoreData;
   }
+
+  /**
+   * Reference to the users collection.
+   */
+  private static getCollectionRef(): firestore.CollectionReference {
+    return db.collection("users");
+  }
 }
