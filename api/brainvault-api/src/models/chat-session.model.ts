@@ -105,4 +105,17 @@ export class ChatSessionModel {
 
     return created!;
   }
+
+  /**
+   * Retrieves a specific chat session.
+   */
+  static async findById(
+    userId: string,
+    documentId: string,
+    sessionId: string
+  ): Promise<ChatSession | null> {
+    const docRef = this.getCollectionRef(userId, documentId).doc(sessionId);
+    const snapshot = await docRef.get();
+    return this.fromFirestore(snapshot);
+  }
 }
