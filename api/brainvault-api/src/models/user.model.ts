@@ -31,4 +31,28 @@ export class UserModel {
       settings: (data.settings as UserSettings) || { theme: "system" },
     };
   }
+
+  /**
+   * Converts a partial User entity to Firestore format.
+   */
+  static toFirestore(data: Partial<User>): Record<string, any> {
+    const firestoreData: Record<string, any> = { ...data };
+
+    // Remove id as it's the document key
+    delete firestoreData.id;
+
+    // Convert Dates to Timestamps
+    if (data.createdAt instanceof Date) {
+      firestoreData.createdAt = firestore.Timestamp.fromDate(data.createdAt);
+    }
+
+    // Always handle updatedAt
+    if (data.updatedAt instanceof Date) {
+      firestoreData.updatedAt = firestore.Timestamp.fromDate(data.updatedAt);
+    } else {
+      firestoreData.updatedAt = firestore.Timestamp.now();
+    }
+
+    return firestoreData;
+  }
 }
