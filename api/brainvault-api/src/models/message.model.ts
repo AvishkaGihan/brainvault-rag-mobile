@@ -31,4 +31,26 @@ export class MessageModel {
       errorMessage: data.errorMessage,
     };
   }
+
+  /**
+   * Converts a Message entity to Firestore format.
+   */
+  static toFirestore(data: Partial<Message>): Record<string, any> {
+    const firestoreData: Record<string, any> = { ...data };
+
+    // Remove id as it's the document key
+    delete firestoreData.id;
+
+    // Convert Date to Timestamp
+    if (data.createdAt instanceof Date) {
+      firestoreData.createdAt = firestore.Timestamp.fromDate(data.createdAt);
+    } else {
+      firestoreData.createdAt = firestore.Timestamp.now();
+    }
+
+    // Ensure citations is an array (empty if undefined)
+    firestoreData.citations = data.citations || [];
+
+    return firestoreData;
+  }
 }
