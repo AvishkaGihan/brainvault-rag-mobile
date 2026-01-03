@@ -55,4 +55,20 @@ export class ChatSessionModel {
 
     return firestoreData;
   }
+
+  /**
+   * Helper to construct the collection path.
+   * Path: /users/{userId}/documents/{documentId}/chats
+   */
+  private static getCollectionRef(
+    userId: string,
+    documentId: string
+  ): firestore.CollectionReference {
+    return db
+      .collection("users")
+      .doc(userId)
+      .collection("documents")
+      .doc(documentId)
+      .collection("chats");
+  }
 }
