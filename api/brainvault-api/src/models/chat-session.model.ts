@@ -72,9 +72,9 @@ export class ChatSessionModel {
       .collection("chats");
   }
 
-  // ---------------------------------------------------------------------------------
+  // ------------------------------------------------------------------
   // CRUD Operations
-  // ---------------------------------------------------------------------------------
+  // ------------------------------------------------------------------
 
   /**
    * Creates a new chat session.
@@ -90,6 +90,14 @@ export class ChatSessionModel {
       ? collectionRef.doc(sessionId)
       : collectionRef.doc();
 
+    // Check if session exists (if sessionId provided) to avoid overwriting
+    if (sessionId) {
+      const existing = await docRef.get();
+      if (existing.exists) {
+        return this.fromFirestore(existing)!;
+      }
+    }
+
     const sessionData = {
       documentId,
       userId,
@@ -103,7 +111,11 @@ export class ChatSessionModel {
     const snapshot = await docRef.get();
     const created = this.fromFirestore(snapshot);
 
-    return created!;
+    if (!created) {
+      throw new Error("Failed to create chat session");
+    }
+
+    return created;
   }
 
   /**
