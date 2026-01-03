@@ -53,4 +53,23 @@ export class MessageModel {
 
     return firestoreData;
   }
+
+  /**
+   * Helper to construct the deeply nested collection path.
+   * Path: /users/{userId}/documents/{documentId}/chats/{chatId}/messages
+   */
+  private static getCollectionRef(
+    userId: string,
+    documentId: string,
+    chatId: string
+  ): firestore.CollectionReference {
+    return db
+      .collection("users")
+      .doc(userId)
+      .collection("documents")
+      .doc(documentId)
+      .collection("chats")
+      .doc(chatId)
+      .collection("messages");
+  }
 }
