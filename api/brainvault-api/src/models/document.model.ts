@@ -77,4 +77,39 @@ export class DocumentModel {
   ): firestore.CollectionReference {
     return db.collection("users").doc(userId).collection("documents");
   }
+
+  // ------------------------------------------------------------------
+  // CRUD Operations
+  // ------------------------------------------------------------------
+
+  /**
+   * Create a new document in Firestore.
+   */
+  static async create(
+    document: Omit<Document, "id"> & { id?: string }
+  ): Promise<Document> {
+    const { userId, id } = document;
+
+    // Ensure vectorNamespace follows strict format
+    const docData = {
+      ...document,
+      vectorNamespace: `user_${userId}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const collectionRef = this.getCollectionRef(userId);
+    const docRef = id ? collectionRef.doc(id) : collectionRef.doc();
+
+    await docRef.set(this.toFirestore(docData));
+
+    const snapshot = await docRef.get();
+    const created = this.fromFirestore(snapshot);
+
+    if (!created) {
+      throw new Error("Failed to retrieve created document");
+    }
+
+    return created;
+  }
 }
