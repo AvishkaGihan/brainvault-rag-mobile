@@ -72,4 +72,40 @@ export class MessageModel {
       .doc(chatId)
       .collection("messages");
   }
+
+  // -----------------------------------------------------------------------------
+  // CRUD Operations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Create a new message in a chat session.
+   */
+  static async create(
+    userId: string,
+    documentId: string,
+    chatId: string,
+    message: Omit<Message, "id" | "createdAt"> & { id?: string }
+  ): Promise<Message> {
+    const collectionRef = this.getCollectionRef(userId, documentId, chatId);
+    const docRef = message.id
+      ? collectionRef.doc(message.id)
+      : collectionRef.doc();
+
+    const messageData = {
+      ...message,
+      chatId, // Ensure chatId matches parent
+      createdAt: new Date(),
+    };
+
+    await docRef.set(this.toFirestore(messageData));
+
+    const snapshot = await docRef.get();
+    const created = this.fromFirestore(snapshot);
+
+    if (!created) {
+      throw new Error("Failed to retrieve created message");
+    }
+
+    return created;
+  }
 }
