@@ -110,4 +110,18 @@ export class UserModel {
 
     return created;
   }
+
+  /**
+   * Updates user profile fields or settings.
+   */
+  static async update(userId: string, updates: Partial<User>): Promise<void> {
+    const docRef = this.getCollectionRef().doc(userId);
+
+    const updateData = this.toFirestore({
+      ...updates,
+      updatedAt: new Date(),
+    });
+
+    await docRef.update(updateData);
+  }
 }
