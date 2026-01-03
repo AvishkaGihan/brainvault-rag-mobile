@@ -118,4 +118,21 @@ export class ChatSessionModel {
     const snapshot = await docRef.get();
     return this.fromFirestore(snapshot);
   }
+
+  /**
+   * Lists all chat sessions for a document, ordered by most recent activity.
+   */
+  static async list(
+    userId: string,
+    documentId: string
+  ): Promise<ChatSession[]> {
+    const collectionRef = this.getCollectionRef(userId, documentId);
+
+    // Order by updatedAt desc so the most recent conversation is first
+    const snapshot = await collectionRef.orderBy("updatedAt", "desc").get();
+
+    return snapshot.docs
+      .map((doc) => this.fromFirestore(doc))
+      .filter((session): session is ChatSession => session !== null);
+  }
 }
