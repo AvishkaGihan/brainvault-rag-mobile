@@ -63,9 +63,9 @@ export class UserModel {
     return db.collection("users");
   }
 
-  // -----------------------------------------------------------------------------------
+  // ------------------------------------------------------------------
   // User Management
-  // -----------------------------------------------------------------------------------
+  // ------------------------------------------------------------------
 
   /**
    * Retrieves a user by their Firebase Auth UID.
@@ -123,5 +123,25 @@ export class UserModel {
     });
 
     await docRef.update(updateData);
+  }
+
+  // ------------------------------------------------------------------
+  // Helper Methods
+  // ------------------------------------------------------------------
+
+  /**
+   * Atomically increments or decrements the denormalized document count.
+   * Used when documents are added or deleted.
+   */
+  static async updateDocumentCount(
+    userId: string,
+    change: number
+  ): Promise<void> {
+    const docRef = this.getCollectionRef().doc(userId);
+
+    await docRef.update({
+      documentCount: firestore.FieldValue.increment(change),
+      updatedAt: firestore.Timestamp.now(),
+    });
   }
 }
