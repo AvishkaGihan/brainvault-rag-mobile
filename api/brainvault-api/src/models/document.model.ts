@@ -112,4 +112,16 @@ export class DocumentModel {
 
     return created;
   }
+
+  /**
+   * Retrieve a document by ID.
+   */
+  static async findById(
+    userId: string,
+    documentId: string
+  ): Promise<Document | null> {
+    const docRef = this.getCollectionRef(userId).doc(documentId);
+    const snapshot = await docRef.get();
+    return this.fromFirestore(snapshot);
+  }
 }
