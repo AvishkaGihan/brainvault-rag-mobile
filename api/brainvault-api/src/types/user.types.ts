@@ -40,6 +40,9 @@ export interface User {
    */
   documentCount: number;
 
+  /** Storage usage in bytes */
+  storageUsage: number;
+
   /** User preferences */
   settings: UserSettings;
 
@@ -56,6 +59,9 @@ export interface User {
 export interface UserSettings {
   /** UI Theme preference */
   theme: "light" | "dark" | "system";
+
+  /** Language preference */
+  language: string;
 }
 
 // ------------------------------------------------------------------

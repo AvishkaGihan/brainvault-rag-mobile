@@ -28,7 +28,11 @@ export class UserModel {
       updatedAt: toDate(data.updatedAt),
       isGuest: data.isGuest ?? false,
       documentCount: data.documentCount ?? 0,
-      settings: (data.settings as UserSettings) || { theme: "system" },
+      storageUsage: data.storageUsage ?? 0,
+      settings: (data.settings as UserSettings) || {
+        theme: "system",
+        language: "en",
+      },
     };
   }
 
