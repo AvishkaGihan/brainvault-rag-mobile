@@ -1,56 +1,118 @@
 /**
- * Custom application error class for standardized error handling.
- * Extends the native Error class to provide HTTP status codes and error codes
- * for proper API error responses and middleware handling.
+ * Custom application error class to standardize error handling across the API.
+ * extends native Error to include HTTP status codes and operational error codes.
  */
 export class AppError extends Error {
-  /**
-   * HTTP status code for the error (e.g., 400, 404, 500)
-   */
   public readonly statusCode: number;
-
-  /**
-   * Machine-readable error code for API responses
-   */
   public readonly code: string;
+  public readonly details?: object;
 
-  /**
-   * Additional error details or context
-   */
-  public readonly details?: unknown;
-
-  /**
-   * Creates a new AppError instance.
-   * @param statusCode HTTP status code
-   * @param message Human-readable error message
-   * @param code Optional machine-readable error code (defaults to status code)
-   * @param details Optional additional error details
-   */
   constructor(
     statusCode: number,
+    code: string,
     message: string,
-    code?: string,
-    details?: unknown
+    details?: object
   ) {
     super(message);
-    this.name = "AppError";
     this.statusCode = statusCode;
-    this.code = code || `ERROR_${statusCode}`;
+    this.code = code;
     this.details = details;
+    this.name = this.constructor.name;
 
-    // Ensure proper prototype chain for instanceof checks
-    Object.setPrototypeOf(this, AppError.prototype);
+    // Capture stack trace excluding constructor call
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  // --- Factory Methods for Common Errors ---
+
+  /**
+   * 400 Bad Request
+   */
+  static badRequest(message = "Bad Request", details?: object): AppError {
+    return new AppError(400, "BAD_REQUEST", message, details);
   }
 
   /**
-   * Converts the error to a JSON-serializable object for API responses.
+   * 401 Unauthorized
    */
-  toJSON() {
-    return {
-      code: this.code,
-      message: this.message,
-      statusCode: this.statusCode,
-      details: this.details,
-    };
+  static unauthorized(message = "Unauthorized access"): AppError {
+    return new AppError(401, "UNAUTHORIZED", message);
+  }
+
+  /**
+   * 403 Forbidden
+   */
+  static forbidden(message = "Access forbidden"): AppError {
+    return new AppError(403, "FORBIDDEN", message);
+  }
+
+  /**
+   * 404 Not Found
+   */
+  static notFound(resource = "Resource"): AppError {
+    return new AppError(404, "NOT_FOUND", `${resource} not found`);
+  }
+
+  /**
+   * 413 Payload Too Large (File Uploads)
+   */
+  static fileTooLarge(message = "File is too large"): AppError {
+    return new AppError(413, "FILE_TOO_LARGE", message);
+  }
+
+  /**
+   * 415 Unsupported Media Type
+   */
+  static invalidFileType(message = "Invalid file type"): AppError {
+    return new AppError(415, "INVALID_FILE_TYPE", message);
+  }
+
+  /**
+   * 429 Too Many Requests
+   */
+  static rateLimited(message = "Too many requests"): AppError {
+    return new AppError(429, "RATE_LIMITED", message);
+  }
+
+  /**
+   * 500 Internal Server Error
+   */
+  static internal(message = "Internal server error"): AppError {
+    return new AppError(500, "INTERNAL_ERROR", message);
+  }
+
+  /**
+   * 503 Service Unavailable
+   */
+  static serviceUnavailable(service: string): AppError {
+    return new AppError(
+      503,
+      "SERVICE_UNAVAILABLE",
+      `${service} service is currently unavailable`
+    );
+  }
+
+  /**
+   * 503 LLM Service Specific Error
+   */
+  static llmUnavailable(details?: object): AppError {
+    return new AppError(
+      503,
+      "LLM_UNAVAILABLE",
+      "AI service is currently unavailable",
+      details
+    );
+  }
+
+  /**
+   * 500 Embedding Service Specific Error
+   */
+  static embeddingFailed(details?: object): AppError {
+    return new AppError(
+      500,
+      "EMBEDDING_FAILED",
+      "Failed to generate content embeddings",
+      details
+    );
   }
 }
