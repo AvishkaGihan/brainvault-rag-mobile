@@ -124,3 +124,29 @@ export interface VectorMetadata {
   text: string;
   userId: string;
 }
+
+// ------------------------------------------------------------------
+// Chunk Types
+// ------------------------------------------------------------------
+
+/**
+ * Represents a text chunk produced during document processing.
+ * Includes the raw text and metadata used for citations and vector storage.
+ */
+export interface ChunkWithMetadata {
+  /** Raw chunk text */
+  text: string;
+  /** Metadata describing the chunk */
+  metadata: {
+    /** Optional original document name (if available at chunking time) */
+    documentName?: string;
+    /** 1-based page number where this chunk begins */
+    pageNumber: number;
+    /** Sequential chunk index within the full document */
+    chunkIndex: number;
+    /** Start character offset within the original text */
+    startOffset: number;
+    /** End character offset within the original text */
+    endOffset: number;
+  };
+}

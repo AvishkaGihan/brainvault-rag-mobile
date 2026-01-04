@@ -1,15 +1,5 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-
-/**
- * Metadata associated with a text chunk, critical for citation tracking.
- */
-export interface ChunkWithMetadata {
-  text: string;
-  pageNumber: number;
-  chunkIndex: number;
-  startOffset: number;
-  endOffset: number;
-}
+import { ChunkWithMetadata } from "../types/document.types";
 
 /**
  * Splits extracted text into semantic chunks while preserving page number information.
@@ -111,10 +101,12 @@ export async function chunkText(
 
     chunksWithMetadata.push({
       text: chunkContent,
-      pageNumber: pageNumber,
-      chunkIndex: index,
-      startOffset: effectiveStart,
-      endOffset: endOffset,
+      metadata: {
+        pageNumber: pageNumber,
+        chunkIndex: index,
+        startOffset: effectiveStart,
+        endOffset: endOffset,
+      },
     });
 
     // Update search index for the next iteration.
