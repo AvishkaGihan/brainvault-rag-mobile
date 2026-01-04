@@ -17,13 +17,10 @@
 export interface ApiResponse<T = unknown> {
   /** Indicates if the request was successful */
   success: boolean;
-
   /** The actual data payload (present if success is true) */
   data?: T;
-
   /** Error details (present if success is false) */
   error?: ApiError;
-
   /** Optional metadata (pagination, etc.) */
   meta?: ApiMeta;
 }
@@ -51,10 +48,8 @@ export interface ApiMeta {
 export interface ApiError {
   /** Machine-readable error code */
   code: ErrorCode;
-
   /** Human-readable error message */
   message: string;
-
   /** Optional additional details about the error */
   details?: unknown;
 }
@@ -73,17 +68,14 @@ export enum ErrorCode {
   FILE_TOO_LARGE = "FILE_TOO_LARGE",
   INVALID_FILE_TYPE = "INVALID_FILE_TYPE",
   RATE_LIMITED = "RATE_LIMITED",
-
   // Server Errors (5xx)
   INTERNAL_ERROR = "INTERNAL_ERROR",
   SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE",
-
   // AI/RAG Specific Errors
   EMBEDDING_FAILED = "EMBEDDING_FAILED",
   LLM_UNAVAILABLE = "LLM_UNAVAILABLE",
   NO_RELEVANT_CONTENT = "NO_RELEVANT_CONTENT",
   PROCESSING_FAILED = "PROCESSING_FAILED",
-
   // External Service Errors
   FIREBASE_ERROR = "FIREBASE_ERROR",
   PINECONE_ERROR = "PINECONE_ERROR",
