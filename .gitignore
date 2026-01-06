@@ -1,0 +1,383 @@
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.staging.local
+*.pem
+*.key
+*.crt
+
+# ==========================================
+# Backend (Node.js / TypeScript)
+# ==========================================
+# Dependencies
+backend/node_modules/
+backend/package-lock.json
+backend/yarn.lock
+backend/pnpm-lock.yaml
+
+# Build outputs
+backend/dist/
+backend/build/
+backend/.tsc-out/
+
+# Runtime logs & debugging
+backend/logs/
+backend/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Testing & Coverage
+backend/coverage/
+backend/.nyc_output/
+backend/.jest/
+backend/*.lcov
+
+# Node-specific
+backend/.node_modules.bin/
+
+# ==========================================
+# Mobile App (Flutter)
+# ==========================================
+# Flutter/Dart build files
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/coverage/
+
+# Flutter specific
+mobile/doc/api/
+mobile/**/ios/Flutter/.last_build_id
+mobile/**/macos/Flutter/.last_build_id
+
+# Platform-specific build directories
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+mobile/android/.gradle/
+mobile/android/.settings/
+mobile/ios/Pods/
+mobile/ios/Podfile.lock
+mobile/macos/Pods/
+mobile/macos/Podfile.lock
+mobile/windows/flutter/
+mobile/linux/flutter/
+
+# Generated files
+mobile/**/*.g.dart
+mobile/**/*.freezed.dart
+mobile/**/*.config.dart
+
+# Obfuscation & Symbolication
+mobile/app.*.symbols
+mobile/app.*.map.json
+mobile/KeyStore
+
+# Android Studio generated
+mobile/.gradle/
+mobile/local.properties
+mobile/android/.idea/
+mobile/android/app/release/app-release.apk
+
+# ==========================================
+# IDE & Editor Configuration
+# ==========================================
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.sublime-settings
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*.swn
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settingsPath
+.history
+.elixir_ls/
+
+# ==========================================
+# BMAD (Business Model AI Design) - AI Workflow Tools
+# ==========================================
+_bmad/
+_bmad-output/
+.github/agents/
+flattened-codebase.xml
+*.generated.xml
+story-*.md
+*-flattened.xml
+
+# ==========================================
+# Operating System Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.windows-build-tools
+
+# ==========================================
+# Temporary & Backup Files
+# ==========================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+.#*
+
+# ==========================================
+# Cache Directories
+# ==========================================
+.cache/
+*.cache
+.grunt/
+.parcel-cache/
+
+# ==========================================
+# Python (if used in scripts)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# ==========================================
+# Ruby (if used)
+# ==========================================
+Gemfile.lock
+
+# ==========================================
+# Firebase & Platform-specific
+# ==========================================
+.firebaserc
+firebase-debug.log
+
+# ==========================================
+# Build artifacts & general patterns
+# ==========================================
+out/
+dist/
+*.min.js
+*.min.css
+
+# ==========================================
+# Node.js root-level (in case of monorepo usage)
+# ==========================================
+node_modules/
+pnpm-lock.yaml
+
+# ================================
+# BrainVault Monorepo .gitignore
+# ================================
+
+# ----------------
+# Environment & Secrets
+# ----------------
+.env
+.env.local
+.env.*.local
+*.env
+**/.env
+**/.env.local
+
+# Firebase Service Account Keys
+**/serviceAccountKey.json
+**/firebase-credentials.json
+**/*-firebase-adminsdk-*.json
+
+# API Keys & Credentials
+secrets/
+credentials/
+
+# ----------------
+# Backend (Node.js/TypeScript)
+# ----------------
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/.npm
+backend/.eslintcache
+backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/lerna-debug.log*
+backend/.pnpm-debug.log*
+
+# TypeScript
+backend/*.tsbuildinfo
+
+# Testing
+backend/coverage/
+backend/.nyc_output/
+
+# ----------------
+# Mobile (Flutter/Dart)
+# ----------------
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/flutter_*.png
+mobile/linked_*.ds
+mobile/unlinked.ds
+mobile/unlinked_spec.ds
+
+# Flutter/Dart/Pub related
+mobile/*.g.dart
+mobile/*.freezed.dart
+mobile/**/generated_plugin_registrant.dart
+
+# IntelliJ related
+mobile/*.iml
+mobile/*.ipr
+mobile/*.iws
+mobile/.idea/
+
+# VS Code
+mobile/.vscode/
+
+# Android related
+mobile/android/**/gradle-wrapper.jar
+mobile/android/.gradle
+mobile/android/captures/
+mobile/android/gradlew
+mobile/android/gradlew.bat
+mobile/android/local.properties
+mobile/android/**/GeneratedPluginRegistrant.java
+mobile/android/key.properties
+mobile/android/app/google-services.json
+
+# iOS/XCode related
+mobile/ios/**/*.mode1v3
+mobile/ios/**/*.mode2v3
+mobile/ios/**/*.moved-aside
+mobile/ios/**/*.pbxuser
+mobile/ios/**/*.perspectivev3
+mobile/ios/**/*sync/
+mobile/ios/**/.sconsign.dblite
+mobile/ios/**/.tags*
+mobile/ios/**/.vagrant/
+mobile/ios/**/DerivedData/
+mobile/ios/**/Icon?
+mobile/ios/**/Pods/
+mobile/ios/**/.symlinks/
+mobile/ios/**/profile
+mobile/ios/**/xcuserdata
+mobile/ios/.generated/
+mobile/ios/Flutter/.last_build_id
+mobile/ios/Flutter/App.framework
+mobile/ios/Flutter/Flutter.framework
+mobile/ios/Flutter/Flutter.podspec
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/ephemeral
+mobile/ios/Flutter/app.flx
+mobile/ios/Flutter/app.zip
+mobile/ios/Flutter/flutter_assets/
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/ServiceDefinitions.json
+mobile/ios/Runner/GeneratedPluginRegistrant.*
+mobile/ios/Runner/GoogleService-Info.plist
+
+# macOS
+mobile/macos/Flutter/GeneratedPluginRegistrant.swift
+mobile/macos/Flutter/ephemeral
+
+# Coverage
+mobile/coverage/
+
+# Exceptions to above rules
+!mobile/android/app/src/main/res/
+
+# ----------------
+# IDEs & Editors
+# ----------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ----------------
+# Documentation Build
+# ----------------
+docs/_build/
+docs/.sass-cache/
+
+# ----------------
+# Testing & CI
+# ----------------
+*.log
+*.pid
+*.seed
+*.pid.lock
+.grunt
+coverage/
+.nyc_output/
+.cache/
+
+# ----------------
+# Temporary Files
+# ----------------
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# ----------------
+# OS Generated
+# ----------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ----------------
+# Railway & Deployment
+# ----------------
+.railway/
+railway.json
+
+# ----------------
+# Debug & Logs
+# ----------------
+*.log
+logs/
+debug.log
+error.log
+combined.log
