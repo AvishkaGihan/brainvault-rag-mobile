@@ -163,5 +163,4 @@ ISC License
 
 ## Contact
 
-For questions or feedback, please reach out to the project maintainer.</content>
-<parameter name="filePath">c:\Users\avish\OneDrive\Documents\Projects\brainvault-rag-mobile\README.md
+For questions or feedback, please reach out to the project maintainer.
