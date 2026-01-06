@@ -177,6 +177,16 @@ Gemfile.lock
 # ==========================================
 .firebaserc
 firebase-debug.log
+# Firebase configuration files (local/project-specific)
+firebase.json
+**/firebase.json
+mobile/firebase.json
+# Dart/Flutter generated Firebase options
+lib/firebase_options.dart
+**/firebase_options.dart
+# Android / iOS platform service files
+**/google-services.json
+**/GoogleService-Info.plist
 
 # ==========================================
 # Build artifacts & general patterns
