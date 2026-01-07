@@ -85,12 +85,15 @@ void main() {
         reason: 'AppBar should be present on screen',
       );
 
-      // Verify AppBar background color
-      final appBarWidget = appBar.first.evaluate().first.widget as AppBar;
+      // Verify theme has primary color configured for AppBar
+      final materialApp =
+          find.byType(MaterialApp).evaluate().first.widget as MaterialApp;
+      final appBarTheme = materialApp.theme?.appBarTheme;
+
       expect(
-        appBarWidget.backgroundColor,
+        appBarTheme?.backgroundColor,
         equals(AppColors.primary),
-        reason: 'AppBar background should use primary color',
+        reason: 'AppBar theme should use primary color as background',
       );
     });
 
