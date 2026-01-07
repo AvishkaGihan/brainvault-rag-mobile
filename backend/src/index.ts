@@ -6,7 +6,7 @@
 import express, { Express } from "express";
 import cors from "cors";
 import { env } from "./config/env";
-import routes from "./routes";
+import { router } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 
 /**
@@ -59,7 +59,7 @@ function createApp(): Express {
   }
 
   // Routes
-  app.use("/api", routes);
+  app.use("/api", router);
 
   // 404 Handler
   app.use(notFoundHandler);

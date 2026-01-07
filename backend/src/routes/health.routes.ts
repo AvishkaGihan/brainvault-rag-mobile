@@ -16,4 +16,4 @@ const router = Router();
  */
 router.get("/", HealthController.health);
 
-export default router;
+export { router };

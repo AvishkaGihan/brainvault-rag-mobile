@@ -5,20 +5,25 @@
  */
 
 import admin from "firebase-admin";
-import dotenv from "dotenv";
-dotenv.config();
+import { env } from "./env";
 
 /**
  * Initialize Firebase Admin SDK
  * Configures Firebase with service account credentials for server-side operations
+ * Uses env validation to ensure credentials are present before initialization
  */
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  }),
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: env.firebaseProjectId,
+      privateKey: env.firebasePrivateKey.replace(/\\n/g, "\n"),
+      clientEmail: env.firebaseClientEmail,
+    }),
+  });
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  throw new Error(`Failed to initialize Firebase Admin SDK: ${message}`);
+}
 
 /**
  * Firebase Auth instance for user authentication operations
