@@ -4,3 +4,4 @@
  */
 
 export * from "./api.types";
+export * from "./vector.types";
