@@ -72,6 +72,89 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@brainvault-46438.iam.gserviceaccount.com
 ```
 
+#### Pinecone Setup (Story 1.4)
+
+Pinecone is the vector database for storing and querying document embeddings. Set up a free-tier account:
+
+**Step 1: Create Pinecone Account & Project**
+
+1. Go to [Pinecone Console](https://app.pinecone.io)
+2. Sign up or log in (create free account if needed)
+3. Create a new project (or select existing one)
+
+**Step 2: Create Index**
+
+1. Click **+ Create Index**
+2. Configure with these settings:
+   - **Name:** `brainvault-index`
+   - **Dimension:** `768` (matches text-embedding-004 model)
+   - **Metric:** `Cosine` (optimal for semantic search)
+   - **Cloud:** `AWS`
+   - **Region:** `us-east-1` (free tier)
+   - **Pod type:** `Starter` (free tier)
+3. Click **Create Index**
+4. Wait for index to reach "Ready" status (usually 1-2 minutes)
+
+**Step 3: Get API Key**
+
+1. Go to **API Keys** (sidebar)
+2. Copy your API Key (keep it secure, don't commit to git)
+
+**Step 4: Add to .env**
+
+```env
+PINECONE_API_KEY=your-copied-api-key
+PINECONE_INDEX=brainvault-index
+```
+
+**Verify Configuration:**
+
+Run the test suite to verify Pinecone is configured correctly:
+
+```bash
+npm test -- tests/unit/pinecone.test.ts
+```
+
+Expected output:
+
+```
+PASS  tests/unit/pinecone.test.ts
+  Pinecone Client Configuration
+    ✓ should initialize Pinecone client with valid API key
+    ✓ should connect to brainvault-index
+  Vector Metadata Schema
+    ✓ should have correct metadata schema with all required fields
+    ✓ should enforce correct field types and constraints
+  ...
+  Tests: 17 passed, 17 total
+```
+
+**Troubleshooting Pinecone:**
+
+| Issue                      | Solution                                                         |
+| -------------------------- | ---------------------------------------------------------------- |
+| "Connection Failed"        | Verify API key is correct (no extra spaces)                      |
+| "Invalid Vector Dimension" | Ensure using 768-dim embeddings (text-embedding-004)             |
+| "Rate Limit (429)"         | Free tier: max 3 requests/sec. Add exponential backoff           |
+| "Index Not Found"          | Verify index name is exactly `brainvault-index` (case-sensitive) |
+
+**Free Tier Limits:**
+
+- Max vectors: 100,000 (easily handles 20 docs × 100 chunks each)
+- Max requests/sec: 3 (adequate for development)
+- Max metadata size: ~40KB per vector
+- Metadata fields: Max 10 (using 5: userId, documentId, pageNumber, chunkIndex, textPreview)
+
+**Metadata Schema:**
+
+Vectors stored in Pinecone include metadata for user isolation and source tracking:
+
+- `userId` - User ID (primary isolation mechanism)
+- `documentId` - Document ID (links to source)
+- `pageNumber` - Page number (source attribution)
+- `chunkIndex` - Chunk order (sequence tracking)
+- `textPreview` - First 200 chars (UI preview)
+
 Edit `.env` and add your complete configuration:
 
 ```env
@@ -83,7 +166,7 @@ PORT=3000
 FIREBASE_CREDENTIALS='{"type":"service_account","project_id":"your-project-id",...}'
 # OR use individual fields if FIREBASE_CREDENTIALS not set
 
-# Pinecone (from Pinecone Console)
+# Pinecone (from Pinecone Console - Story 1.4)
 PINECONE_API_KEY=your-api-key
 PINECONE_INDEX=brainvault-index
 
