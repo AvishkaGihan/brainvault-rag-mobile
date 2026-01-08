@@ -41,17 +41,47 @@ Create a `.env` file in the project root (copy from `.env.example`):
 cp .env.example .env
 ```
 
-Edit `.env` and add your configuration:
+#### Firebase Setup (Story 1.3)
+
+You need Firebase credentials to run the backend. Here's how to set them up:
+
+**Step 1: Get Firebase Service Account Credentials**
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Select your project: **brainvault** (Project ID: your-project-id)
+3. Click ⚙️ **Project Settings** (top right)
+4. Go to **Service Accounts** tab
+5. Click **Generate New Private Key**
+6. Save the JSON file securely
+
+**Step 2: Add Credentials to .env**
+
+Edit `.env` and add your configuration. You have two options:
+
+**Option A: Complete JSON Credentials (Recommended)**
+
+```env
+FIREBASE_CREDENTIALS='{"type":"service_account","project_id":"your-project-id","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"..."}'
+```
+
+**Option B: Individual Fields**
+
+```env
+FIREBASE_PROJECT_ID=brainvault-46438
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@brainvault-46438.iam.gserviceaccount.com
+```
+
+Edit `.env` and add your complete configuration:
 
 ```env
 # Server Configuration
 NODE_ENV=development
 PORT=3000
 
-# Firebase (from Firebase Console)
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=your-service-account-email
+# Firebase (from Firebase Console - Story 1.3)
+FIREBASE_CREDENTIALS='{"type":"service_account","project_id":"your-project-id",...}'
+# OR use individual fields if FIREBASE_CREDENTIALS not set
 
 # Pinecone (from Pinecone Console)
 PINECONE_API_KEY=your-api-key
@@ -306,6 +336,37 @@ Check `tsconfig.json` for compilation settings.
 - **@types/** - TypeScript definitions
 
 ## 🐛 Troubleshooting
+
+### Firebase Connection Issues
+
+**Error: `Missing required environment variable: FIREBASE_CREDENTIALS`**
+
+- Ensure `.env` file exists in the project root
+- Add either `FIREBASE_CREDENTIALS` (JSON) or individual Firebase variables
+- Verify credentials JSON is valid (no extra quotes or escape issues)
+
+**Error: `Failed to initialize Firebase Admin SDK`**
+
+- Check that Firebase project ID matches your project ID
+- Verify service account credentials were downloaded from correct project
+- Ensure private key includes `-----BEGIN PRIVATE KEY-----` markers
+
+**Firebase credentials in different formats:**
+
+If you exported the key from Firebase Console, it may need formatting:
+
+```bash
+# If FIREBASE_PRIVATE_KEY shows literal \n instead of newlines:
+# Replace them with actual newlines in your .env file
+
+# Incorrect:
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEv..."
+
+# Correct: Use actual newlines in multi-line format
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+MIIEv...
+-----END PRIVATE KEY-----"
+```
 
 ### Port Already in Use
 

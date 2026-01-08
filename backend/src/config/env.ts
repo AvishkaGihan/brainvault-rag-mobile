@@ -13,9 +13,14 @@ interface EnvironmentConfig {
   port: number;
 
   // Firebase (required for production)
-  firebaseProjectId: string;
-  firebasePrivateKey: string;
-  firebaseClientEmail: string;
+  // Option 1: Complete JSON service account (NEW - preferred)
+  firebaseCredentials?: string;
+  firebaseServiceAccountKey?: string;
+
+  // Option 2: Individual fields (deprecated but supported for backwards compatibility)
+  firebaseProjectId?: string;
+  firebasePrivateKey?: string;
+  firebaseClientEmail?: string;
 
   // Pinecone (required for production)
   pineconeApiKey: string;
@@ -32,7 +37,9 @@ interface EnvironmentConfig {
 
 /**
  * Load and validate environment variables
- * Throws error if critical variables are missing in ANY environment
+ * Supports two Firebase configuration approaches:
+ * 1. Full JSON credentials in FIREBASE_CREDENTIALS (preferred)
+ * 2. Individual variables: FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL
  */
 function loadEnvironment(): EnvironmentConfig {
   const nodeEnv =
@@ -40,9 +47,14 @@ function loadEnvironment(): EnvironmentConfig {
     "development";
   const port = parseInt(process.env.PORT || "3000", 10);
   const googleApiKey = process.env.GOOGLE_API_KEY;
+
+  // Firebase configuration - support both JSON and individual variables
+  const firebaseCredentials = process.env.FIREBASE_CREDENTIALS;
+  const firebaseServiceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
   const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY;
   const firebaseClientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+
   const pineconeApiKey = process.env.PINECONE_API_KEY;
   const pineconeIndex = process.env.PINECONE_INDEX;
 
@@ -58,17 +70,17 @@ function loadEnvironment(): EnvironmentConfig {
     );
   }
 
-  // Validate Firebase configuration (required for all environments)
-  const firebaseErrors: string[] = [];
-  if (!firebaseProjectId) firebaseErrors.push("FIREBASE_PROJECT_ID");
-  if (!firebasePrivateKey) firebaseErrors.push("FIREBASE_PRIVATE_KEY");
-  if (!firebaseClientEmail) firebaseErrors.push("FIREBASE_CLIENT_EMAIL");
+  // Validate Firebase configuration
+  // Accept either: FIREBASE_CREDENTIALS (JSON) or individual fields
+  const hasJsonCredentials = firebaseCredentials || firebaseServiceAccountKey;
+  const hasIndividualFields =
+    firebaseProjectId && firebasePrivateKey && firebaseClientEmail;
 
-  if (firebaseErrors.length > 0) {
+  if (!hasJsonCredentials && !hasIndividualFields) {
     throw new Error(
-      `Missing required Firebase environment variables: ${firebaseErrors.join(
-        ", "
-      )}`
+      "Missing Firebase configuration. Provide either:\n" +
+        "1. FIREBASE_CREDENTIALS (JSON service account key), or\n" +
+        "2. FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL"
     );
   }
 
@@ -88,9 +100,11 @@ function loadEnvironment(): EnvironmentConfig {
   const config: EnvironmentConfig = {
     nodeEnv,
     port,
-    firebaseProjectId: firebaseProjectId as string,
-    firebasePrivateKey: firebasePrivateKey as string,
-    firebaseClientEmail: firebaseClientEmail as string,
+    // Firebase - provide both JSON and individual fields if available
+    firebaseCredentials: firebaseCredentials || firebaseServiceAccountKey,
+    firebaseProjectId: firebaseProjectId,
+    firebasePrivateKey: firebasePrivateKey,
+    firebaseClientEmail: firebaseClientEmail,
     pineconeApiKey: pineconeApiKey as string,
     pineconeIndex: pineconeIndex as string,
     llmProvider: process.env.LLM_PROVIDER || "gemini",
