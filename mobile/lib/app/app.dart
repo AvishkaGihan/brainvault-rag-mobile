@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'routes.dart';
 import '../core/theme/app_theme.dart';
 
-class BrainVaultApp extends StatelessWidget {
+class BrainVaultApp extends ConsumerWidget {
   const BrainVaultApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final goRouter = createGoRouter(ref);
+
     return MaterialApp.router(
       title: 'BrainVault',
       theme: AppTheme.lightTheme,
