@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:brainvault/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -17,6 +18,8 @@ class MockFirebaseUser extends Mock implements firebase.User {
   @override
   String? get email => null;
 }
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 
 void main() {
   group('AuthRemoteDataSource Error mapping', () {
@@ -71,10 +74,15 @@ void main() {
   group('AuthRemoteDataSourceImpl', () {
     late AuthRemoteDataSourceImpl dataSource;
     late MockFirebaseAuth mockFirebaseAuth;
+    late MockFirebaseFirestore mockFirestore;
 
     setUp(() {
       mockFirebaseAuth = MockFirebaseAuth();
-      dataSource = AuthRemoteDataSourceImpl(firebaseAuth: mockFirebaseAuth);
+      mockFirestore = MockFirebaseFirestore();
+      dataSource = AuthRemoteDataSourceImpl(
+        firebaseAuth: mockFirebaseAuth,
+        firestore: mockFirestore,
+      );
     });
 
     group('signInAnonymously', () {

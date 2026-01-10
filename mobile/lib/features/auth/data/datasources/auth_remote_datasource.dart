@@ -32,13 +32,13 @@ abstract class AuthRemoteDataSource {
 /// Implementation of AuthRemoteDataSource
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final FirebaseAuth _firebaseAuth;
-  final FirebaseFirestore? _firestore;
+  final FirebaseFirestore _firestore;
 
   AuthRemoteDataSourceImpl({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
   }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-       _firestore = firestore;
+       _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Future<UserCredential> signInAnonymously() async {
@@ -70,10 +70,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> createUserProfile(String uid, String email) async {
-    if (_firestore == null) {
-      throw AuthException('Firestore not initialized');
-    }
-
     try {
       await _firestore.collection('users').doc(uid).set({
         'email': email.toLowerCase(),
