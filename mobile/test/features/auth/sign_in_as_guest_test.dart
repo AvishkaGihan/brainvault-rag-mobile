@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:brainvault/features/auth/domain/entities/user.dart';
 import 'package:brainvault/features/auth/domain/repositories/auth_repository.dart';
 import 'package:brainvault/features/auth/domain/usecases/sign_in_as_guest.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository {}
+@GenerateMocks([AuthRepository])
+import 'sign_in_as_guest_test.mocks.dart';
 
 void main() {
   group('SignInAsGuestUseCase', () {

@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:brainvault/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:brainvault/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:brainvault/features/auth/domain/entities/user.dart';
 
-class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}
+@GenerateMocks([AuthRemoteDataSource])
+import 'auth_repository_impl_test.mocks.dart';
 
 class MockFirebaseUser extends Mock implements firebase.User {
   @override
