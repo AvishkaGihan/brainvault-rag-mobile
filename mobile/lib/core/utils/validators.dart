@@ -1,7 +1,3 @@
-/// Validation utilities for the BrainVault mobile app
-/// Provides reusable validation functions for forms and user input
-library;
-
 /// Validates email format using regex
 /// Returns true if email matches standard email pattern
 bool isValidEmail(String email) {
