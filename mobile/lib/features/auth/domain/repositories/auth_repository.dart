@@ -6,6 +6,10 @@ abstract class AuthRepository {
   /// Throws [Exception] if authentication fails
   Future<User> signInAsGuest();
 
+  /// Register with email and password
+  /// Throws [Exception] if registration fails
+  Future<User> registerWithEmail(String email, String password);
+
   /// Get the current authenticated user
   /// Returns null if no user is authenticated
   User? getCurrentUser();

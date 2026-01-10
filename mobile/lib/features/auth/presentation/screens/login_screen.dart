@@ -134,6 +134,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 48),
+
+                // Sign up link
+                Center(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      GestureDetector(
+                        onTap: () => GoRouter.of(context).push('/register'),
+                        child: Text(
+                          'Sign Up',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

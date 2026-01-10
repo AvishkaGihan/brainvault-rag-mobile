@@ -1,11 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:brainvault/features/auth/data/datasources/auth_remote_datasource.dart';
 
-@GenerateMocks([firebase.FirebaseAuth])
-import 'auth_remote_datasource_test.mocks.dart';
+class MockFirebaseAuth extends Mock implements firebase.FirebaseAuth {}
 
 class MockUserCredential extends Mock implements firebase.UserCredential {}
 
@@ -84,7 +82,7 @@ void main() {
         // Arrange
         final mockCredential = MockUserCredential();
         when(
-          mockFirebaseAuth.signInAnonymously(),
+          () => mockFirebaseAuth.signInAnonymously(),
         ).thenAnswer((_) async => mockCredential);
 
         // Act
@@ -92,12 +90,12 @@ void main() {
 
         // Assert
         expect(result, equals(mockCredential));
-        verify(mockFirebaseAuth.signInAnonymously()).called(1);
+        verify(() => mockFirebaseAuth.signInAnonymously()).called(1);
       });
 
       test('should throw AuthException on FirebaseAuthException', () async {
         // Arrange
-        when(mockFirebaseAuth.signInAnonymously()).thenThrow(
+        when(() => mockFirebaseAuth.signInAnonymously()).thenThrow(
           firebase.FirebaseAuthException(code: 'network-request-failed'),
         );
 
@@ -111,7 +109,7 @@ void main() {
       test('should throw AuthException on generic exception', () async {
         // Arrange
         when(
-          mockFirebaseAuth.signInAnonymously(),
+          () => mockFirebaseAuth.signInAnonymously(),
         ).thenThrow(Exception('Generic error'));
 
         // Act & Assert
@@ -125,7 +123,7 @@ void main() {
     group('getCurrentUser', () {
       test('should return Firebase User when exists', () {
         // Arrange
-        when(mockFirebaseAuth.currentUser).thenReturn(MockFirebaseUser());
+        when(() => mockFirebaseAuth.currentUser).thenReturn(MockFirebaseUser());
 
         // Act
         final result = dataSource.getCurrentUser();
@@ -137,7 +135,7 @@ void main() {
 
       test('should return null when no current user', () {
         // Arrange
-        when(mockFirebaseAuth.currentUser).thenReturn(null);
+        when(() => mockFirebaseAuth.currentUser).thenReturn(null);
 
         // Act
         final result = dataSource.getCurrentUser();
@@ -150,18 +148,18 @@ void main() {
     group('signOut', () {
       test('should call signOut on FirebaseAuth', () async {
         // Arrange
-        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
+        when(() => mockFirebaseAuth.signOut()).thenAnswer((_) async {});
 
         // Act
         await dataSource.signOut();
 
         // Assert
-        verify(mockFirebaseAuth.signOut()).called(1);
+        verify(() => mockFirebaseAuth.signOut()).called(1);
       });
 
       test('should throw AuthException on FirebaseAuthException', () async {
         // Arrange
-        when(mockFirebaseAuth.signOut()).thenThrow(
+        when(() => mockFirebaseAuth.signOut()).thenThrow(
           firebase.FirebaseAuthException(code: 'network-request-failed'),
         );
 
