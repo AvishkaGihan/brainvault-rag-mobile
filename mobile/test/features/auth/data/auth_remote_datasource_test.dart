@@ -22,55 +22,6 @@ class MockFirebaseUser extends Mock implements firebase.User {
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 
 void main() {
-  group('AuthRemoteDataSource Error mapping', () {
-    test('should map network error correctly', () {
-      final error = firebase.FirebaseAuthException(
-        code: 'network-request-failed',
-        message: 'Network error',
-      );
-
-      // Test that the error code is recognized
-      expect(error.code, equals('network-request-failed'));
-      expect(error.message, equals('Network error'));
-    });
-
-    test('should map rate-limit error correctly', () {
-      final error = firebase.FirebaseAuthException(
-        code: 'too-many-requests',
-        message: 'Too many requests',
-      );
-
-      expect(error.code, equals('too-many-requests'));
-    });
-
-    test('should map operation-not-allowed error correctly', () {
-      final error = firebase.FirebaseAuthException(
-        code: 'operation-not-allowed',
-        message: 'Operation not allowed',
-      );
-
-      expect(error.code, equals('operation-not-allowed'));
-    });
-
-    test('should map invalid-email error correctly', () {
-      final error = firebase.FirebaseAuthException(
-        code: 'invalid-email',
-        message: 'Invalid email',
-      );
-
-      expect(error.code, equals('invalid-email'));
-    });
-
-    test('should map weak-password error correctly', () {
-      final error = firebase.FirebaseAuthException(
-        code: 'weak-password',
-        message: 'Weak password',
-      );
-
-      expect(error.code, equals('weak-password'));
-    });
-  });
-
   group('AuthRemoteDataSourceImpl', () {
     late AuthRemoteDataSourceImpl dataSource;
     late MockFirebaseAuth mockFirebaseAuth;
@@ -174,6 +125,146 @@ void main() {
         // Act & Assert
         expect(() => dataSource.signOut(), throwsA(isA<AuthException>()));
       });
+    });
+  });
+
+  group('AuthRemoteDataSource Error Mapping', () {
+    late AuthRemoteDataSourceImpl dataSource;
+    late MockFirebaseAuth mockFirebaseAuth;
+    late MockFirebaseFirestore mockFirestore;
+
+    setUp(() {
+      mockFirebaseAuth = MockFirebaseAuth();
+      mockFirestore = MockFirebaseFirestore();
+      dataSource = AuthRemoteDataSourceImpl(
+        firebaseAuth: mockFirebaseAuth,
+        firestore: mockFirestore,
+      );
+    });
+
+    test('should map email-already-in-use error correctly', () async {
+      when(
+        () => mockFirebaseAuth.signInAnonymously(),
+      ).thenThrow(firebase.FirebaseAuthException(code: 'email-already-in-use'));
+
+      expect(
+        () => dataSource.signInAnonymously(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'This email is already registered. Please try logging in or use a different email.',
+          ),
+        ),
+      );
+    });
+
+    test('should map invalid-email error correctly', () async {
+      when(
+        () => mockFirebaseAuth.createUserWithEmailAndPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(firebase.FirebaseAuthException(code: 'invalid-email'));
+
+      expect(
+        () => dataSource.registerWithEmail('test@example.com', 'password'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Please enter a valid email address.',
+          ),
+        ),
+      );
+    });
+
+    test('should map weak-password error correctly', () async {
+      when(
+        () => mockFirebaseAuth.createUserWithEmailAndPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(firebase.FirebaseAuthException(code: 'weak-password'));
+
+      expect(
+        () => dataSource.registerWithEmail('test@example.com', 'password'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Password is too weak. Use letters, numbers, and symbols.',
+          ),
+        ),
+      );
+    });
+
+    test('should map operation-not-allowed error correctly', () async {
+      when(() => mockFirebaseAuth.signInAnonymously()).thenThrow(
+        firebase.FirebaseAuthException(code: 'operation-not-allowed'),
+      );
+
+      expect(
+        () => dataSource.signInAnonymously(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Email/Password registration is not enabled. Please contact support.',
+          ),
+        ),
+      );
+    });
+
+    test('should map network-request-failed error correctly', () async {
+      when(() => mockFirebaseAuth.signInAnonymously()).thenThrow(
+        firebase.FirebaseAuthException(code: 'network-request-failed'),
+      );
+
+      expect(
+        () => dataSource.signInAnonymously(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Connection error. Please check your internet and try again.',
+          ),
+        ),
+      );
+    });
+
+    test('should map too-many-requests error correctly', () async {
+      when(
+        () => mockFirebaseAuth.signInAnonymously(),
+      ).thenThrow(firebase.FirebaseAuthException(code: 'too-many-requests'));
+
+      expect(
+        () => dataSource.signInAnonymously(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Too many attempts. Please try again in a few minutes.',
+          ),
+        ),
+      );
+    });
+
+    test('should map unknown error to default message', () async {
+      when(
+        () => mockFirebaseAuth.signInAnonymously(),
+      ).thenThrow(firebase.FirebaseAuthException(code: 'unknown-error'));
+
+      expect(
+        () => dataSource.signInAnonymously(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            'Sign-in failed. Please try again.',
+          ),
+        ),
+      );
     });
   });
 }
