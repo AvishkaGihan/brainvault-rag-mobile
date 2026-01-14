@@ -14,7 +14,10 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.text('BrainVault'), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      // LoginScreen now has email/password form instead of BrainVault title
+      expect(find.text('Email'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
     });
 
     testWidgets('HomeScreen is a valid widget', (WidgetTester tester) async {
@@ -55,12 +58,13 @@ void main() {
     testWidgets('All screens display AppBar with title', (
       WidgetTester tester,
     ) async {
-      // Test LoginScreen (updated from AuthScreen)
-      // LoginScreen doesn't have AppBar in initial design - it has a centered UI
+      // Test LoginScreen (updated to new email/password login design)
       await tester.pumpWidget(
         ProviderScope(child: MaterialApp(home: LoginScreen())),
       );
-      expect(find.text('BrainVault'), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      // LoginScreen now shows login form
+      expect(find.text('Email'), findsOneWidget);
 
       // Test HomeScreen
       await tester.pumpWidget(const MaterialApp(home: HomeScreen()));

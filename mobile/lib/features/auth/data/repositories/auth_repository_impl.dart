@@ -37,6 +37,23 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User> signInWithEmail(String email, String password) async {
+    try {
+      final userCredential = await remoteDataSource.signInWithEmail(
+        email,
+        password,
+      );
+      final firebaseUser = userCredential.user!;
+
+      return _mapFirebaseUserToEntity(firebaseUser);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Sign-in failed: ${e.toString()}');
+    }
+  }
+
+  @override
   User? getCurrentUser() {
     final firebaseUser = remoteDataSource.getCurrentUser();
     return firebaseUser != null ? _mapFirebaseUserToEntity(firebaseUser) : null;

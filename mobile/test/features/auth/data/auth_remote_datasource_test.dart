@@ -289,6 +289,150 @@ void main() {
       });
     });
 
+    group('Email/Password Login', () {
+      group('signInWithEmail', () {
+        const testEmail = 'test@example.com';
+        const testPassword = 'password123';
+
+        test('should sign in with email and password successfully', () async {
+          // Arrange
+          final mockUser = MockFirebaseUser(email: testEmail);
+          final mockCredential = MockUserCredential();
+          when(() => mockCredential.user).thenReturn(mockUser);
+
+          when(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: testPassword,
+            ),
+          ).thenAnswer((_) async => mockCredential);
+
+          // Act
+          final result = await dataSource.signInWithEmail(
+            testEmail,
+            testPassword,
+          );
+
+          // Assert
+          expect(result, equals(mockCredential));
+          verify(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: testPassword,
+            ),
+          ).called(1);
+        });
+
+        test('should throw AuthException on user-not-found error', () async {
+          // Arrange
+          final exception = firebase.FirebaseAuthException(
+            code: 'user-not-found',
+            message: 'User not found',
+          );
+
+          when(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: testPassword,
+            ),
+          ).thenThrow(exception);
+
+          // Act & Assert
+          expect(
+            () => dataSource.signInWithEmail(testEmail, testPassword),
+            throwsA(isA<AuthException>()),
+          );
+        });
+
+        test('should throw AuthException on wrong-password error', () async {
+          // Arrange
+          final exception = firebase.FirebaseAuthException(
+            code: 'wrong-password',
+            message: 'Wrong password',
+          );
+
+          when(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: 'wrongpassword',
+            ),
+          ).thenThrow(exception);
+
+          // Act & Assert
+          expect(
+            () => dataSource.signInWithEmail(testEmail, 'wrongpassword'),
+            throwsA(isA<AuthException>()),
+          );
+        });
+
+        test('should throw AuthException on user-disabled error', () async {
+          // Arrange
+          final exception = firebase.FirebaseAuthException(
+            code: 'user-disabled',
+            message: 'User disabled',
+          );
+
+          when(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: testPassword,
+            ),
+          ).thenThrow(exception);
+
+          // Act & Assert
+          expect(
+            () => dataSource.signInWithEmail(testEmail, testPassword),
+            throwsA(isA<AuthException>()),
+          );
+        });
+
+        test('should throw AuthException on too-many-requests error', () async {
+          // Arrange
+          final exception = firebase.FirebaseAuthException(
+            code: 'too-many-requests',
+            message: 'Too many requests',
+          );
+
+          when(
+            () => mockFirebaseAuth.signInWithEmailAndPassword(
+              email: testEmail,
+              password: testPassword,
+            ),
+          ).thenThrow(exception);
+
+          // Act & Assert
+          expect(
+            () => dataSource.signInWithEmail(testEmail, testPassword),
+            throwsA(isA<AuthException>()),
+          );
+        });
+
+        test(
+          'should throw AuthException on network-request-failed error',
+          () async {
+            // Arrange
+            final exception = firebase.FirebaseAuthException(
+              code: 'network-request-failed',
+              message: 'Network error',
+            );
+
+            when(
+              () => mockFirebaseAuth.signInWithEmailAndPassword(
+                email: testEmail,
+                password: testPassword,
+              ),
+            ).thenThrow(exception);
+
+            // Act & Assert
+            expect(
+              () => dataSource.signInWithEmail(testEmail, testPassword),
+              throwsA(isA<AuthException>()),
+            );
+          },
+        );
+      });
+    });
+
     group('Error Mapping', () {
       late AuthRemoteDataSourceImpl dataSource;
       late MockFirebaseAuthError mockFirebaseAuth;
@@ -303,6 +447,68 @@ void main() {
         );
       });
 
+      // Login error mapping tests
+      test('should map user-not-found error correctly', () async {
+        when(
+          () => mockFirebaseAuth.signInWithEmailAndPassword(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenThrow(firebase.FirebaseAuthException(code: 'user-not-found'));
+
+        expect(
+          () => dataSource.signInWithEmail('test@example.com', 'password'),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.message,
+              'message',
+              'Invalid email or password',
+            ),
+          ),
+        );
+      });
+
+      test('should map wrong-password error correctly', () async {
+        when(
+          () => mockFirebaseAuth.signInWithEmailAndPassword(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenThrow(firebase.FirebaseAuthException(code: 'wrong-password'));
+
+        expect(
+          () => dataSource.signInWithEmail('test@example.com', 'password'),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.message,
+              'message',
+              'Invalid email or password',
+            ),
+          ),
+        );
+      });
+
+      test('should map user-disabled error correctly', () async {
+        when(
+          () => mockFirebaseAuth.signInWithEmailAndPassword(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenThrow(firebase.FirebaseAuthException(code: 'user-disabled'));
+
+        expect(
+          () => dataSource.signInWithEmail('test@example.com', 'password'),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.message,
+              'message',
+              'This account has been disabled. Please contact support.',
+            ),
+          ),
+        );
+      });
+
+      // Registration error mapping tests
       test('should map email-already-in-use error correctly', () async {
         when(() => mockFirebaseAuth.signInAnonymously()).thenThrow(
           firebase.FirebaseAuthException(code: 'email-already-in-use'),
@@ -371,7 +577,7 @@ void main() {
             isA<AuthException>().having(
               (e) => e.message,
               'message',
-              'Email/Password registration is not enabled. Please contact support.',
+              'Email/Password login is not enabled. Please contact support.',
             ),
           ),
         );
@@ -396,16 +602,19 @@ void main() {
 
       test('should map too-many-requests error correctly', () async {
         when(
-          () => mockFirebaseAuth.signInAnonymously(),
+          () => mockFirebaseAuth.signInWithEmailAndPassword(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
         ).thenThrow(firebase.FirebaseAuthException(code: 'too-many-requests'));
 
         expect(
-          () => dataSource.signInAnonymously(),
+          () => dataSource.signInWithEmail('test@example.com', 'password'),
           throwsA(
             isA<AuthException>().having(
               (e) => e.message,
               'message',
-              'Too many attempts. Please try again in a few minutes.',
+              'Too many login attempts. Please try again in a few minutes.',
             ),
           ),
         );
