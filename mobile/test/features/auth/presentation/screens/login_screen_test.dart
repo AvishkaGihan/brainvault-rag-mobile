@@ -11,9 +11,7 @@ void main() {
   group('LoginScreen Widget Tests', () {
     // Helper function to reduce boilerplate
     Widget createLoginScreen() {
-      return const ProviderScope(
-        child: MaterialApp(home: Scaffold(body: LoginScreen())),
-      );
+      return const ProviderScope(child: MaterialApp(home: LoginScreen()));
     }
 
     testWidgets('should display Sign In title in AppBar', (
@@ -25,9 +23,7 @@ void main() {
       // Assert
       expect(find.byType(AppBar), findsOneWidget);
       final appBar = tester.widget<AppBar>(find.byType(AppBar));
-      expect(appBar.title, isA<Text>());
-      final titleText = (appBar.title as Text).data;
-      expect(titleText, 'Sign In');
+      expect(appBar.title, isNull); // AppBar no longer has a title
     });
 
     testWidgets('should display login form with email and password fields', (
@@ -68,7 +64,14 @@ void main() {
       // Arrange
       await tester.pumpWidget(createLoginScreen());
 
-      // Act
+      // Act - Scroll to make Forgot Password link visible
+      await tester.dragUntilVisible(
+        find.text('Forgot Password?'),
+        find.byType(SingleChildScrollView),
+        const Offset(0, -50),
+      );
+      await tester.pumpAndSettle();
+
       final forgotPasswordButton = find.text('Forgot Password?');
       await tester.tap(forgotPasswordButton);
       await tester.pumpAndSettle();
@@ -166,6 +169,34 @@ void main() {
 
       // Assert
       expect(find.byType(Divider), findsOneWidget);
+    });
+
+    testWidgets('should display BrainVault logo icon', (
+      WidgetTester tester,
+    ) async {
+      // Arrange & Act
+      await tester.pumpWidget(createLoginScreen());
+
+      // Assert
+      expect(find.byIcon(Icons.psychology), findsOneWidget);
+    });
+
+    testWidgets('should display BrainVault title', (WidgetTester tester) async {
+      // Arrange & Act
+      await tester.pumpWidget(createLoginScreen());
+
+      // Assert
+      expect(find.text('BrainVault'), findsOneWidget);
+    });
+
+    testWidgets('should display Your Second Brain tagline', (
+      WidgetTester tester,
+    ) async {
+      // Arrange & Act
+      await tester.pumpWidget(createLoginScreen());
+
+      // Assert
+      expect(find.text('Your Second Brain'), findsOneWidget);
     });
   });
 }
