@@ -8,14 +8,26 @@ import 'package:brainvault/features/auth/domain/entities/user.dart';
 class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}
 
 class MockFirebaseUser extends Mock implements firebase.User {
-  @override
-  String get uid => 'test-uid';
+  final String _uid;
+  final bool _isAnonymous;
+  final String? _email;
+
+  MockFirebaseUser({
+    String uid = 'test-uid',
+    bool isAnonymous = true,
+    String? email,
+  }) : _uid = uid,
+       _isAnonymous = isAnonymous,
+       _email = email;
 
   @override
-  bool get isAnonymous => true;
+  String get uid => _uid;
 
   @override
-  String? get email => null;
+  bool get isAnonymous => _isAnonymous;
+
+  @override
+  String? get email => _email;
 
   @override
   firebase.UserMetadata get metadata =>
@@ -23,8 +35,13 @@ class MockFirebaseUser extends Mock implements firebase.User {
 }
 
 class MockUserCredential extends Mock implements firebase.UserCredential {
+  final firebase.User _user;
+
+  MockUserCredential({firebase.User? user})
+    : _user = user ?? MockFirebaseUser();
+
   @override
-  firebase.User get user => MockFirebaseUser();
+  firebase.User get user => _user;
 }
 
 void main() {
@@ -64,6 +81,72 @@ void main() {
         // Act & Assert
         expect(() => repository.signInAsGuest(), throwsException);
         verify(() => mockDataSource.signInAnonymously()).called(1);
+      });
+    });
+
+    group('signInWithEmail', () {
+      const testEmail = 'test@example.com';
+      const testPassword = 'password123';
+
+      test('should return User when signInWithEmail succeeds', () async {
+        // Arrange
+        final mockFirebaseUser = MockFirebaseUser(
+          uid: 'user-123',
+          isAnonymous: false,
+          email: testEmail,
+        );
+        final mockCredential = MockUserCredential(user: mockFirebaseUser);
+        when(
+          () => mockDataSource.signInWithEmail(testEmail, testPassword),
+        ).thenAnswer((_) async => mockCredential);
+
+        // Act
+        final result = await repository.signInWithEmail(
+          testEmail,
+          testPassword,
+        );
+
+        // Assert
+        expect(result, isA<User>());
+        expect(result.uid, equals('user-123'));
+        expect(result.isAnonymous, isFalse);
+        expect(result.email, equals(testEmail));
+        verify(
+          () => mockDataSource.signInWithEmail(testEmail, testPassword),
+        ).called(1);
+      });
+
+      test('should throw AuthException when credentials are invalid', () async {
+        // Arrange
+        when(
+          () => mockDataSource.signInWithEmail(testEmail, testPassword),
+        ).thenThrow(AuthException('Invalid email or password'));
+
+        // Act & Assert
+        expect(
+          () => repository.signInWithEmail(testEmail, testPassword),
+          throwsA(isA<AuthException>()),
+        );
+        verify(
+          () => mockDataSource.signInWithEmail(testEmail, testPassword),
+        ).called(1);
+      });
+
+      test('should throw exception on network error', () async {
+        // Arrange
+        when(
+          () => mockDataSource.signInWithEmail(testEmail, testPassword),
+        ).thenThrow(
+          AuthException(
+            'Connection error. Please check your internet and try again.',
+          ),
+        );
+
+        // Act & Assert
+        expect(
+          () => repository.signInWithEmail(testEmail, testPassword),
+          throwsA(isA<AuthException>()),
+        );
       });
     });
 

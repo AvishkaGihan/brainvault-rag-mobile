@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
+import '../widgets/login_form_widget.dart';
 
-/// Authentication screen for guest login
+/// Login screen for email/password authentication
+/// Provides UI for users to log in with their email and password
+/// Also displays guest and sign-up options
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,10 +18,23 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(isSigningInProvider);
-    final errorMessage = ref.watch(authErrorProvider);
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
+    // Navigate to home on successful login
+    ref.listen(loginProvider, (previous, next) {
+      if (next.hasValue &&
+          !next.isLoading &&
+          isAuthenticated &&
+          context.mounted) {
+        GoRouter.of(context).go('/');
+      }
+      if (next.hasError && !next.isLoading && context.mounted) {
+        final error = next.error.toString();
+        _showErrorDialog(context, error, ref);
+      }
+    });
+
+    // If already authenticated, navigate to home
     if (isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) GoRouter.of(context).go('/');
@@ -26,112 +42,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Sign In'), elevation: 0),
       body: SingleChildScrollView(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 48.0,
-            ),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // App title and description
-                const SizedBox(height: 48),
-                Text(
-                  'BrainVault',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
+                const SizedBox(height: 24),
+
+                // Login form
+                const LoginFormWidget(),
+
+                const SizedBox(height: 24),
+
+                // Forgot Password link
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      // TODO: Navigate to password reset screen (Story 2.6)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Password reset coming soon. Please contact support.',
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Forgot Password?',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'AI-Powered Document Q&A',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 64),
 
-                // Guest sign-in button
+                const SizedBox(height: 32),
+
+                // Divider
+                const Divider(),
+                const SizedBox(height: 24),
+
+                // Guest login option
                 SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: FilledButton(
-                    onPressed: isLoading
+                  child: OutlinedButton(
+                    onPressed: ref.watch(isSigningInProvider)
                         ? null
                         : () {
                             ref.read(guestSignInProvider.notifier).signIn();
                           },
-                    child: isLoading
-                        ? const _LoadingState()
-                        : const Text('Continue as Guest'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Error message if any
-                if (errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      border: Border.all(color: Colors.red.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          errorMessage,
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (!isLoading)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                ref.read(guestSignInProvider.notifier).signIn();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade700,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text('Retry'),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 48),
-
-                // Information section
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Guest Mode Features:',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureItem('📤 Upload documents'),
-                      _buildFeatureItem('💬 Ask AI questions'),
-                      _buildFeatureItem('📊 Get answers with citations'),
-                      _buildFeatureItem('⚡ No signup required'),
-                    ],
+                    child: const Text('Continue as Guest'),
                   ),
                 ),
 
@@ -168,40 +132,98 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildFeatureItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+  void _showErrorDialog(BuildContext context, String error, WidgetRef ref) {
+    final isNetworkError =
+        error.contains('Connection error') ||
+        error.contains('Check your internet');
+
+    final isTooManyAttempts = error.contains('Too many');
+
+    if (isNetworkError) {
+      _showNetworkErrorDialog(context, error, ref);
+    } else if (isTooManyAttempts) {
+      _showTooManyAttemptsDialog(context, error, ref);
+    } else {
+      _showGenericErrorDialog(context, error, ref);
+    }
+  }
+
+  void _showNetworkErrorDialog(
+    BuildContext context,
+    String error,
+    WidgetRef ref,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Connection Error'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Retry - trigger login again with current form state
+              final formState = ref.read(loginFormProvider);
+              ref
+                  .read(loginProvider.notifier)
+                  .signIn(formState.email, formState.password);
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
-}
 
-/// Loading state widget shown during sign-in
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
+  void _showTooManyAttemptsDialog(
+    BuildContext context,
+    String error,
+    WidgetRef ref,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Too Many Attempts'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // AC3: Clear password field on error (security best practice)
+              ref.read(loginFormProvider.notifier).setPassword('');
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+  void _showGenericErrorDialog(
+    BuildContext context,
+    String error,
+    WidgetRef ref,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign In Error'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // AC3: Clear password field on error (security best practice)
+              ref.read(loginFormProvider.notifier).setPassword('');
+            },
+            child: const Text('OK'),
           ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          'Thinking...',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Colors.white,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
