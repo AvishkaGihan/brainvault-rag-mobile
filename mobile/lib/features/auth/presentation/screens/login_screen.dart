@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
-import '../widgets/login_form_widget.dart';
+import '../widgets/auth_form.dart';
 
 /// Login screen for email/password authentication
 /// Provides UI for users to log in with their email and password
@@ -53,7 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Login form
-                const LoginFormWidget(),
+                const AuthForm(mode: AuthFormMode.login),
 
                 const SizedBox(height: 24),
 

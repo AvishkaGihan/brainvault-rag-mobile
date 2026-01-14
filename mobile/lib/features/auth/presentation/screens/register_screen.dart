@@ -34,7 +34,7 @@ class RegisterScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AuthForm(),
+                const AuthForm(mode: AuthFormMode.register),
                 const SizedBox(height: 24),
 
                 // Sign in link
