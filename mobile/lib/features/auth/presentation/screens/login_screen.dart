@@ -42,15 +42,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign In'), elevation: 0),
+      appBar: AppBar(elevation: 0),
       body: SingleChildScrollView(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
+
+                // Logo
+                Icon(
+                  Icons.psychology,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+
+                const SizedBox(height: 16),
+
+                // App Title
+                Text(
+                  'BrainVault',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Tagline
+                Text(
+                  'Your Second Brain',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+
+                const SizedBox(height: 48),
 
                 // Login form
                 const AuthForm(mode: AuthFormMode.login),
