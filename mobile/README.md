@@ -49,15 +49,49 @@ pod install
 cd ..
 ```
 
-### 3. Android Setup
+### 3. Firebase Setup
 
-Ensure your Android environment is configured:
+BrainVault uses Firebase for authentication and data storage. Follow these steps to configure Firebase:
 
-```bash
-flutter doctor -v
-```
+#### Firebase Project Setup
 
-Check that Android SDK, Android Studio, and Connected Devices are properly configured.
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable Authentication:
+   - Go to Authentication > Sign-in method
+   - Enable "Email/Password" provider
+3. Enable Firestore:
+   - Go to Firestore Database
+   - Create database in production mode
+4. Configure Firestore Security Rules:
+
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId} {
+         allow create: if request.auth.uid == userId;
+         allow read, update, delete: if request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+5. Add your Flutter app to Firebase project (Android/iOS)
+6. Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
+7. Place files in appropriate directories:
+   - `android/app/google-services.json`
+   - `ios/Runner/GoogleService-Info.plist`
+
+#### Email/Password Registration
+
+The app supports user registration with email and password:
+
+- Email validation with regex pattern
+- Password minimum 6 characters
+- Automatic user profile creation in Firestore
+- Error handling for duplicate emails, network issues, etc.
+
+For more details, see [Firebase Authentication Documentation](https://firebase.google.com/docs/auth).
 
 ## Running the App
 

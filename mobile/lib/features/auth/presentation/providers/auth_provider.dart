@@ -5,46 +5,50 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/sign_in_as_guest.dart';
+import '../../domain/usecases/sign_up.dart';
+import '../../../../core/utils/validators.dart';
 
-// ============================================================================
-// DEPENDENCY INJECTION PROVIDERS
-// ============================================================================
+/// Authentication providers and state management for the BrainVault app
+/// This file contains Riverpod providers for dependency injection and state notifiers
+/// for handling guest sign-in and user registration flows.
 
-/// Provides the remote data source for Firebase authentication
+/// Provider for AuthRemoteDataSource implementation
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return AuthRemoteDataSourceImpl();
 });
 
-/// Provides the auth repository implementation
+/// Provider for AuthRepository implementation
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
   return AuthRepositoryImpl(remoteDataSource: remoteDataSource);
 });
 
-/// Provides the sign-in as guest use case
+/// Provider for SignInAsGuestUseCase
 final signInAsGuestUseCaseProvider = Provider<SignInAsGuestUseCase>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return SignInAsGuestUseCase(authRepository: repository);
 });
 
-// ============================================================================
-// STATE PROVIDERS
-// ============================================================================
+/// Provider for SignUpUseCase
+final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
+  final repository = ref.watch(authRepositoryProvider);
+  return SignUpUseCase(authRepository: repository);
+});
 
-/// Provides a stream of authentication state changes
-/// Returns null when user is signed out, User object when signed in
+/// Stream provider for authentication state changes
 final authStateProvider = StreamProvider<User?>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return repository.authStateChanges();
 });
 
-/// Provides the current authenticated user (one-time snapshot)
+/// Provider for the current authenticated user
 final currentUserProvider = Provider<User?>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return repository.getCurrentUser();
 });
 
-// Simple state class for guest sign-in
+/// State class for guest sign-in process
+/// Tracks loading state and any errors during guest authentication
 class GuestSignInState {
   final bool isLoading;
   final String? error;
@@ -59,13 +63,16 @@ class GuestSignInState {
   }
 }
 
-// Notifier for guest sign-in - simple implementation
+/// Notifier for managing guest sign-in state
+/// Handles the business logic for signing in as a guest user
 class GuestSignInNotifier extends Notifier<GuestSignInState> {
   @override
   GuestSignInState build() {
     return const GuestSignInState();
   }
 
+  /// Initiates guest sign-in process
+  /// Updates state to loading, performs sign-in, and handles success/error
   Future<void> signIn() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -80,22 +87,186 @@ class GuestSignInNotifier extends Notifier<GuestSignInState> {
     }
   }
 
+  /// Resets the sign-in state to initial values
   void reset() {
     state = const GuestSignInState();
   }
 }
 
-/// Provides the guest sign-in notifier
+/// Provider for GuestSignInNotifier
+/// Exposes the guest sign-in state and actions to the UI
 final guestSignInProvider =
     NotifierProvider<GuestSignInNotifier, GuestSignInState>(() {
       return GuestSignInNotifier();
     });
 
-// ============================================================================
-// COMPUTED PROVIDERS
-// ============================================================================
+/// State class for user registration form
+/// Manages form fields, validation errors, and loading state
+class RegistrationFormState {
+  final String email;
+  final String password;
+  final String confirmPassword;
+  final bool isLoading;
+  final String? emailError;
+  final String? passwordError;
+  final String? confirmPasswordError;
+  final String? generalError;
 
-/// Provides a boolean indicating if user is authenticated
+  const RegistrationFormState({
+    this.email = '',
+    this.password = '',
+    this.confirmPassword = '',
+    this.isLoading = false,
+    this.emailError,
+    this.passwordError,
+    this.confirmPasswordError,
+    this.generalError,
+  });
+
+  RegistrationFormState copyWith({
+    String? email,
+    String? password,
+    String? confirmPassword,
+    bool? isLoading,
+    String? emailError,
+    String? passwordError,
+    String? confirmPasswordError,
+    String? generalError,
+  }) {
+    return RegistrationFormState(
+      email: email ?? this.email,
+      password: password ?? this.password,
+      confirmPassword: confirmPassword ?? this.confirmPassword,
+      isLoading: isLoading ?? this.isLoading,
+      emailError: emailError,
+      passwordError: passwordError,
+      confirmPasswordError: confirmPasswordError,
+      generalError: generalError,
+    );
+  }
+
+  bool get isEmailValid => isValidEmail(email);
+
+  bool get isPasswordValid => isValidPassword(password);
+
+  bool get isPasswordMatching => isPasswordMatch(password, confirmPassword);
+
+  bool get isFormValid =>
+      isEmailValid && isPasswordValid && isPasswordMatching && !isLoading;
+}
+
+/// Notifier for managing registration form state
+/// Handles form field updates, validation, and form reset
+class RegistrationFormNotifier extends Notifier<RegistrationFormState> {
+  @override
+  RegistrationFormState build() {
+    return const RegistrationFormState();
+  }
+
+  /// Updates the email field and validates it
+  void setEmail(String email) {
+    final error = validateEmail(email);
+    state = state.copyWith(email: email, emailError: error);
+  }
+
+  /// Updates the password field and validates it
+  void setPassword(String password) {
+    final error = validatePassword(password);
+    state = state.copyWith(password: password, passwordError: error);
+  }
+
+  /// Updates the confirm password field and validates match
+  void setConfirmPassword(String confirmPassword) {
+    final error = validatePasswordMatch(state.password, confirmPassword);
+    state = state.copyWith(
+      confirmPassword: confirmPassword,
+      confirmPasswordError: error,
+    );
+  }
+
+  /// Resets the form to initial state
+  void reset() {
+    state = const RegistrationFormState();
+  }
+
+  /// Validates email and returns error message if invalid
+  String? validateEmail(String email) => getEmailError(email);
+
+  /// Validates password and returns error message if invalid
+  String? validatePassword(String password) => getPasswordError(password);
+
+  /// Validates password match and returns error message if not matching
+  String? validatePasswordMatch(String password, String confirmPassword) =>
+      getPasswordMatchError(password, confirmPassword);
+}
+
+/// Provider for RegistrationFormNotifier
+/// Exposes the registration form state and actions to the UI
+final registrationFormProvider =
+    NotifierProvider<RegistrationFormNotifier, RegistrationFormState>(() {
+      return RegistrationFormNotifier();
+    });
+
+/// State class for user registration process
+/// Tracks loading state, errors, and success status during registration
+class RegistrationState {
+  final bool isLoading;
+  final String? error;
+  final bool isSuccess;
+
+  const RegistrationState({
+    this.isLoading = false,
+    this.error,
+    this.isSuccess = false,
+  });
+
+  RegistrationState copyWith({
+    bool? isLoading,
+    String? error,
+    bool? isSuccess,
+  }) {
+    return RegistrationState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      isSuccess: isSuccess ?? this.isSuccess,
+    );
+  }
+}
+
+/// Notifier for handling user registration
+/// Manages the async registration process and state
+class RegistrationNotifier extends AsyncNotifier<void> {
+  @override
+  void build() {}
+
+  /// Performs user registration with email and password
+  /// Updates state to loading, executes registration, handles success/error
+  Future<void> register(String email, String password) async {
+    state = const AsyncValue.loading();
+    try {
+      final useCase = ref.watch(signUpUseCaseProvider);
+      await useCase(email, password);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(_mapErrorToUserMessage(e), st);
+    }
+  }
+
+  /// Resets the registration state
+  void reset() {
+    state = const AsyncValue.data(null);
+  }
+}
+
+/// Provider for RegistrationNotifier
+/// Exposes the registration async state and actions to the UI
+final registrationProvider = AsyncNotifierProvider<RegistrationNotifier, void>(
+  () {
+    return RegistrationNotifier();
+  },
+);
+
+/// Provider that determines if a user is currently authenticated
 final isAuthenticatedProvider = Provider<bool>((ref) {
   final user = ref.watch(authStateProvider);
   return user.when(
@@ -105,25 +276,26 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
   );
 });
 
-/// Provides a boolean indicating if user is loading authentication state
+/// Provider that checks if authentication is currently loading
 final isAuthLoadingProvider = Provider<bool>((ref) {
   final user = ref.watch(authStateProvider);
   return user.isLoading;
 });
 
-/// Provides error message from sign-in operation (if any)
+/// Provider for authentication error messages
 final authErrorProvider = Provider<String?>((ref) {
   final signInState = ref.watch(guestSignInProvider);
   return signInState.error;
 });
 
-/// Provides loading state from sign-in operation
+/// Provider that checks if guest sign-in is in progress
 final isSigningInProvider = Provider<bool>((ref) {
   final signInState = ref.watch(guestSignInProvider);
   return signInState.isLoading;
 });
 
-/// Maps exceptions to user-friendly error messages
+/// Maps authentication errors to user-friendly messages
+/// Handles common Firebase auth errors and provides readable feedback
 String _mapErrorToUserMessage(Object error) {
   if (error is Exception) {
     final message = error.toString();

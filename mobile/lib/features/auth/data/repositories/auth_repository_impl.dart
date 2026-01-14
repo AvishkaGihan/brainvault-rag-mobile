@@ -17,6 +17,26 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User> registerWithEmail(String email, String password) async {
+    try {
+      final userCredential = await remoteDataSource.registerWithEmail(
+        email,
+        password,
+      );
+      final firebaseUser = userCredential.user!;
+
+      // Create user profile in Firestore
+      await remoteDataSource.createUserProfile(firebaseUser.uid, email);
+
+      return _mapFirebaseUserToEntity(firebaseUser);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Registration failed: ${e.toString()}');
+    }
+  }
+
+  @override
   User? getCurrentUser() {
     final firebaseUser = remoteDataSource.getCurrentUser();
     return firebaseUser != null ? _mapFirebaseUserToEntity(firebaseUser) : null;
