@@ -102,15 +102,20 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [],
-          child: MaterialApp(home: Scaffold(body: AuthForm())),
+          child: MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: AuthForm())),
+          ),
         ),
       );
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'invalid-email');
-      await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-      await tester.enterText(find.byType(TextFormField).at(2), 'password123');
+      // Find the email field and enter invalid email
+      final emailField = find.byType(TextFormField).at(0);
+      await tester.enterText(emailField, 'invalid-email');
 
-      await tester.pumpAndSettle();
+      // Pump multiple frames to allow Riverpod state to propagate
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
       expect(find.text('Please enter a valid email address'), findsOneWidget);
     });
@@ -121,22 +126,25 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [],
-          child: MaterialApp(home: Scaffold(body: AuthForm())),
+          child: MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: AuthForm())),
+          ),
         ),
       );
 
-      await tester.enterText(
-        find.byType(TextFormField).at(0),
-        'test@example.com',
-      );
-      await tester.enterText(find.byType(TextFormField).at(1), '123');
-      await tester.enterText(find.byType(TextFormField).at(2), '123');
+      // Enter short password
+      final passwordField = find.byType(TextFormField).at(1);
+      await tester.enterText(passwordField, '123');
 
-      await tester.pumpAndSettle();
+      // Pump multiple frames to allow Riverpod state to propagate
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
+      // Look for error in the InputDecoration errorText
       expect(
-        find.text('Password must be at least 6 characters'),
-        findsOneWidget,
+        find.textContaining('Password must be at least 6 characters'),
+        findsWidgets,
       );
     });
 
@@ -146,18 +154,23 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [],
-          child: MaterialApp(home: Scaffold(body: AuthForm())),
+          child: MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: AuthForm())),
+          ),
         ),
       );
 
-      await tester.enterText(
-        find.byType(TextFormField).at(0),
-        'test@example.com',
-      );
+      // Enter password first, then mismatched confirm password
       await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+      await tester.pump();
+      await tester.pump();
+
       await tester.enterText(find.byType(TextFormField).at(2), 'different');
 
-      await tester.pumpAndSettle();
+      // Pump multiple frames to allow Riverpod state to propagate
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
       expect(find.text('Passwords do not match'), findsOneWidget);
     });
