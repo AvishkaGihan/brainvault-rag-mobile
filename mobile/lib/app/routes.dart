@@ -22,7 +22,9 @@ GoRouter createGoRouter(WidgetRef ref) {
       // Redirect logic:
       // - If not authenticated and going to protected routes → redirect to auth
       // - If authenticated and going to auth → redirect to home
-      final isGoingToAuth = state.uri.toString() == '/auth';
+      final isGoingToAuth =
+          state.uri.toString() == '/auth' ||
+          state.uri.toString() == '/register';
 
       if (!isLoggedIn && !isGoingToAuth) {
         return '/auth';
