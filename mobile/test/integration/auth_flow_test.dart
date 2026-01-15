@@ -8,7 +8,7 @@ import 'package:brainvault/features/auth/domain/repositories/auth_repository.dar
 import 'package:brainvault/features/auth/presentation/providers/auth_provider.dart';
 import 'package:brainvault/features/auth/presentation/screens/splash_screen.dart';
 import 'package:brainvault/features/auth/presentation/screens/login_screen.dart';
-import 'package:brainvault/features/documents/presentation/screens/home_screen.dart';
+import 'package:brainvault/features/documents/presentation/screens/documents_screen.dart';
 
 // Mock Repository
 class MockAuthRepository implements AuthRepository {

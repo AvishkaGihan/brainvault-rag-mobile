@@ -7,7 +7,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
-import '../features/documents/presentation/screens/home_screen.dart';
+import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 
 /// Helper class to connect Firebase auth stream to GoRouter's refreshListenable
