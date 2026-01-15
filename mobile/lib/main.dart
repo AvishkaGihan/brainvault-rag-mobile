@@ -16,8 +16,12 @@ void main() async {
   } catch (e) {
     // Firebase initialization critical for authentication and data access
     debugPrint('CRITICAL: Firebase initialization failed: $e');
-    // App will not be functional without Firebase
-    // Users will see error messages when attempting to authenticate
+    debugPrint('App will not be functional without Firebase.');
+    debugPrint(
+      'Users will see error messages when attempting to authenticate.',
+    );
+    // Allow app to continue but auth will fail gracefully
+    // Users will be redirected to login screen with error message
   }
 
   runApp(const ProviderScope(child: BrainVaultApp()));
