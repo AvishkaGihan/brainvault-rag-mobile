@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brainvault/features/auth/presentation/screens/login_screen.dart';
-import 'package:brainvault/features/documents/presentation/screens/home_screen.dart';
+import 'package:brainvault/features/documents/presentation/screens/documents_screen.dart';
 import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
 
 void main() {

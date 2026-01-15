@@ -43,6 +43,17 @@ final signInUseCaseProvider = Provider<SignInUseCase>((ref) {
 });
 
 /// Stream provider for authentication state changes
+///
+/// Emits the current user whenever auth state changes:
+/// - User signs in (email/password or guest) → emits User
+/// - User signs out → emits null
+/// - Token is refreshed (hourly, automatic) → emits User
+/// - Firebase session is restored on app launch → emits User or null
+///
+/// If token refresh fails or session expires, Firebase automatically
+/// logs out the user (emits null), triggering redirect to login screen.
+/// No manual error handling needed - GoRouter's redirect logic will
+/// automatically route to /login when user is null.
 final authStateProvider = StreamProvider<User?>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return repository.authStateChanges();
