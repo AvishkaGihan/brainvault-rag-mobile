@@ -73,6 +73,11 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut() => remoteDataSource.signOut();
 
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    return await remoteDataSource.sendPasswordResetEmail(email);
+  }
+
   /// Map Firebase User to domain User entity
   User _mapFirebaseUserToEntity(firebase.User firebaseUser) {
     return User(

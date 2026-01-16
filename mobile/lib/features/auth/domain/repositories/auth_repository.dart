@@ -24,4 +24,10 @@ abstract class AuthRepository {
 
   /// Sign out the current user
   Future<void> signOut();
+
+  /// Send password reset email
+  /// Always succeeds to prevent email enumeration attacks.
+  /// Actual email is only sent if email exists in Firebase.
+  /// Throws [Exception] on network errors or rate limits.
+  Future<void> sendPasswordResetEmail(String email);
 }
