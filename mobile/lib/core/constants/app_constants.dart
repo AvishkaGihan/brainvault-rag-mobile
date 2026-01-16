@@ -17,6 +17,7 @@ class AppConstants {
 
   // Cache Keys
   static const String cachedDocumentsKey = 'cached_documents';
+  static const String cachedChatHistoryKey = 'cached_chat_history';
   static const String userAuthTokenKey = 'user_auth_token';
   static const String userEmailKey = 'user_email';
 

@@ -9,6 +9,7 @@ import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
+import '../features/settings/presentation/screens/settings_screen.dart';
 
 /// Helper class to connect Firebase auth stream to GoRouter's refreshListenable
 ///
@@ -60,7 +61,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // User is authenticated
       if (user != null) {
-        if (isSplash || isLoggingIn) return '/home';
+        if (isSplash) return '/home';
+        if (isLoggingIn) {
+          final isRegister = state.matchedLocation == '/register';
+          if (user.isAnonymous && isRegister) return null;
+          return '/home';
+        }
         return null; // Allow navigation to protected routes
       } else {
         // User is not authenticated
@@ -90,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final documentId = state.pathParameters['documentId'];
           return ChatScreen(documentId: documentId);
         },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) {
