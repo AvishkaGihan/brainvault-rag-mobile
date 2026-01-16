@@ -61,7 +61,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // User is authenticated
       if (user != null) {
-        if (isSplash || isLoggingIn) return '/home';
+        if (isSplash) return '/home';
+        if (isLoggingIn) {
+          final isRegister = state.matchedLocation == '/register';
+          if (user.isAnonymous && isRegister) return null;
+          return '/home';
+        }
         return null; // Allow navigation to protected routes
       } else {
         // User is not authenticated
