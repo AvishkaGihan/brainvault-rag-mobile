@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:brainvault/features/auth/domain/entities/user.dart';
-import 'package:brainvault/features/auth/presentation/providers/auth_provider.dart';
+import 'package:brainvault/features/auth/presentation/providers/auth_state_providers.dart';
+import 'package:brainvault/features/auth/presentation/providers/logout_provider.dart';
 import 'package:brainvault/features/auth/presentation/screens/settings_screen.dart';
 import 'package:brainvault/features/auth/presentation/screens/login_screen.dart';
 

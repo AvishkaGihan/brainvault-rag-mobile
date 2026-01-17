@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/auth_provider.dart';
+import '../providers/auth_state_providers.dart';
 import 'logout_confirmation_dialog.dart';
 import 'guest_logout_warning_dialog.dart';
 

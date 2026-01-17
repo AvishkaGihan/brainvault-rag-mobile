@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:brainvault/features/auth/domain/entities/user.dart';
-import 'package:brainvault/features/auth/presentation/providers/auth_provider.dart';
+import 'package:brainvault/features/auth/presentation/providers/auth_state_providers.dart';
 import 'package:brainvault/features/auth/presentation/screens/settings_screen.dart';
 import 'package:brainvault/features/auth/presentation/widgets/logout_confirmation_dialog.dart';
 import 'package:brainvault/features/auth/presentation/widgets/guest_logout_warning_dialog.dart';

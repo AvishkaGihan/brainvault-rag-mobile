@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/auth_provider.dart';
+import '../providers/login_providers.dart';
+import '../providers/registration_providers.dart';
 
 /// Mode for the AuthForm widget - determines login vs registration behavior
 enum AuthFormMode { login, register }
