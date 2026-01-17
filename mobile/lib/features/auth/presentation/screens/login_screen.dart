@@ -55,11 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 32),
 
                 // Logo
-                Icon(
-                  Icons.psychology,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Image.asset('assets/images/logo.png', width: 64, height: 64),
 
                 const SizedBox(height: 16),
 
