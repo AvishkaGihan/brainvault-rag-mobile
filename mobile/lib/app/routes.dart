@@ -42,16 +42,16 @@ class GoRouterRefreshStream extends ChangeNotifier {
 /// - Redirects authenticated users away from auth screens to home
 /// - Shows splash screen during initial auth state determination
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final authState = ref.read(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: GoRouterRefreshStream(
-      ref.watch(authRepositoryProvider).authStateChanges(),
+      ref.read(authRepositoryProvider).authStateChanges(),
     ),
     redirect: (context, state) {
       // Show splash screen while auth state is loading
-      if (authState is AsyncLoading) return '/';
+      if (authState.isLoading) return '/splash';
 
       final user = authState.value;
       final location = state.matchedLocation;
@@ -59,7 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           location == '/login' ||
           location == '/register' ||
           location == '/forgot-password';
-      final isSplash = location == '/';
+      final isSplash = location == '/splash';
 
       // Not authenticated - redirect to login unless already on auth screen
       if (user == null) {
@@ -78,7 +78,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
@@ -112,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               Text('Error: ${state.error}'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/home'),
+                onPressed: () => context.go('/splash'),
                 child: const Text('Go Home'),
               ),
             ],
