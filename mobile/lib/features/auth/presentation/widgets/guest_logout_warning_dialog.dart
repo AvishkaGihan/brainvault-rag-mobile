@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../providers/logout_provider.dart';
+import '../providers/auth_provider.dart';
 
 /// Guest user logout warning dialog
 ///

@@ -10,7 +10,7 @@ import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
-import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/auth/presentation/screens/settings_screen.dart';
 
 /// Helper class to connect Firebase auth stream to GoRouter's refreshListenable
 ///

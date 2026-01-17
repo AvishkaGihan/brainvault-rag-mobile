@@ -8,6 +8,7 @@ import '../../domain/usecases/sign_in_as_guest.dart';
 import '../../domain/usecases/sign_in.dart';
 import '../../domain/usecases/sign_up.dart';
 import '../../domain/usecases/reset_password.dart';
+import '../../domain/usecases/sign_out.dart';
 import '../../../../core/utils/validators.dart';
 
 /// Authentication providers and state management for the BrainVault app
@@ -551,6 +552,52 @@ final isSigningInProvider = Provider<bool>((ref) {
   final signInState = ref.watch(guestSignInProvider);
   return signInState.isLoading;
 });
+
+/// State class for logout operation
+class LogoutState {
+  final bool isLoading;
+  final String? error;
+
+  const LogoutState({this.isLoading = false, this.error});
+
+  LogoutState copyWith({bool? isLoading, String? error}) {
+    return LogoutState(isLoading: isLoading ?? this.isLoading, error: error);
+  }
+}
+
+/// Provider for SignOutUseCase
+final logoutUseCaseProvider = Provider<SignOutUseCase>((ref) {
+  final authRepository = ref.watch(authRepositoryProvider);
+  return SignOutUseCase(authRepository: authRepository);
+});
+
+/// Notifier for managing logout state
+class LogoutNotifier extends Notifier<LogoutState> {
+  @override
+  LogoutState build() {
+    return const LogoutState();
+  }
+
+  /// Execute logout and return success status
+  Future<bool> logout() async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final useCase = ref.read(logoutUseCaseProvider);
+      await useCase();
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+}
+
+/// Provider for logout notifier
+final logoutProvider = NotifierProvider<LogoutNotifier, LogoutState>(
+  LogoutNotifier.new,
+);
 
 /// Maps authentication errors to user-friendly messages
 /// Handles common Firebase auth errors and provides readable feedback
