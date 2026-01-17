@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:brainvault/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:brainvault/core/error/exceptions.dart';
 
 class MockFirebaseAuth extends Mock implements firebase.FirebaseAuth {}
 

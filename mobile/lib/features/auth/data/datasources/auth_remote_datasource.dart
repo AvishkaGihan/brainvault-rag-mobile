@@ -1,15 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-/// Exception thrown by auth data source
-class AuthException implements Exception {
-  final String message;
-
-  AuthException(this.message);
-
-  @override
-  String toString() => 'AuthException: $message';
-}
+import '../../../../core/error/exceptions.dart';
 
 /// Remote data source for Firebase authentication
 abstract class AuthRemoteDataSource {

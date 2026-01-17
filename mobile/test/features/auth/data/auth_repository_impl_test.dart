@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:brainvault/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:brainvault/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:brainvault/features/auth/domain/entities/user.dart';
+import 'package:brainvault/core/error/exceptions.dart';
 
 class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}
 
