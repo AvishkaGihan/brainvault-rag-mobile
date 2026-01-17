@@ -21,6 +21,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     // Navigate to home on successful login
     ref.listen(loginProvider, (previous, next) {
@@ -55,7 +57,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 32),
 
                 // Logo
-                Image.asset('assets/images/logo.png', width: 64, height: 64),
+                Image.asset(
+                  isDarkMode
+                      ? 'assets/images/logo_splash_dark.png'
+                      : 'assets/images/logo_splash.png',
+                  width: 80,
+                  height: 80,
+                ),
 
                 const SizedBox(height: 16),
 
