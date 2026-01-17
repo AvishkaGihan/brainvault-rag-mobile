@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/widgets/error_view.dart';
 import '../providers/registration_providers.dart';
 import '../widgets/auth_form.dart';
 
@@ -116,26 +117,21 @@ class RegisterScreen extends ConsumerWidget {
   ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Connection Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Retry - trigger registration again with current form state
-              final formState = ref.read(registrationFormProvider);
-              ref
-                  .read(registrationProvider.notifier)
-                  .register(formState.email, formState.password);
-            },
-            child: const Text('Retry'),
-          ),
-        ],
+      builder: (context) => ErrorView(
+        title: 'Connection Error',
+        message: error,
+        type: ErrorViewType.network,
+        onRetry: () {
+          Navigator.of(context).pop();
+          // Retry - trigger registration again with current form state
+          final formState = ref.read(registrationFormProvider);
+          ref
+              .read(registrationProvider.notifier)
+              .register(formState.email, formState.password);
+        },
+        onDismiss: () => Navigator.of(context).pop(),
+        dismissText: 'Cancel',
+        retryText: 'Retry',
       ),
     );
   }
@@ -143,15 +139,12 @@ class RegisterScreen extends ConsumerWidget {
   void _showGenericErrorDialog(BuildContext context, String error) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Registration Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (context) => ErrorView(
+        title: 'Registration Error',
+        message: error,
+        type: ErrorViewType.auth,
+        onDismiss: () => Navigator.of(context).pop(),
+        dismissText: 'OK',
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/logout_provider.dart';
 
 /// Standard logout confirmation dialog for registered users
@@ -29,11 +30,7 @@ class LogoutConfirmationDialog extends ConsumerWidget {
               ? null
               : () => _performLogout(context, ref),
           child: logoutState.isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const LoadingIndicator(size: 20, color: Colors.white)
               : const Text('Sign Out'),
         ),
       ],
