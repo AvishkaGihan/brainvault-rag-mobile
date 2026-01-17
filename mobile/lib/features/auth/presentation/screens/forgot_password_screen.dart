@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/validators.dart';
+import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/password_reset_providers.dart';
 
 /// Screen for password reset via email
@@ -149,13 +150,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   minimumSize: const Size.fromHeight(48),
                 ),
                 child: formState.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                    ? LoadingIndicator(
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       )
                     : const Text('Send Reset Link'),
               ),

@@ -66,27 +66,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 80,
                 ),
 
-                const SizedBox(height: 16),
-
-                // App Title
-                Text(
-                  'BrainVault',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Tagline
-                Text(
-                  'Your Second Brain',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-
                 const SizedBox(height: 48),
 
                 // Login form
