@@ -90,16 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Forgot Password link
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: Navigate to password reset screen (Story 2.6)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Password reset coming soon. Please contact support.',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => context.push('/forgot-password'),
                     child: Text(
                       'Forgot Password?',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(

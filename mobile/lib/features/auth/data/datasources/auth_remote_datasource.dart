@@ -30,6 +30,9 @@ abstract class AuthRemoteDataSource {
 
   /// Sign out the current user
   Future<void> signOut();
+
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail(String email);
 }
 
 /// Implementation of AuthRemoteDataSource
@@ -112,6 +115,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthException(_mapFirebaseError(e));
     } catch (e) {
       throw AuthException('Failed to sign out: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseError(e));
+    } catch (e) {
+      throw AuthException(
+        'Failed to send password reset email: ${e.toString()}',
+      );
     }
   }
 

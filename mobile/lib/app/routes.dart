@@ -7,6 +7,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
+import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
@@ -56,7 +57,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final user = authState.value;
       final isLoggingIn =
           state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/forgot-password';
       final isSplash = state.matchedLocation == '/';
 
       // User is authenticated
@@ -81,6 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
