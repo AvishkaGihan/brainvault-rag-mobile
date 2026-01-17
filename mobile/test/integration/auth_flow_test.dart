@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:brainvault/app/app.dart';
 import 'package:brainvault/features/auth/domain/entities/user.dart';
 import 'package:brainvault/features/auth/domain/repositories/auth_repository.dart';
-import 'package:brainvault/features/auth/presentation/providers/auth_provider.dart';
+import 'package:brainvault/features/auth/presentation/providers/auth_dependency_providers.dart';
 import 'package:brainvault/features/auth/presentation/screens/splash_screen.dart';
 import 'package:brainvault/features/auth/presentation/screens/login_screen.dart';
 import 'package:brainvault/features/documents/presentation/screens/documents_screen.dart';

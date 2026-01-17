@@ -3,14 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/auth/presentation/providers/auth_state_providers.dart';
+import '../features/auth/presentation/providers/auth_dependency_providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
-import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/auth/presentation/screens/settings_screen.dart';
 
 /// Helper class to connect Firebase auth stream to GoRouter's refreshListenable
 ///
@@ -41,44 +42,46 @@ class GoRouterRefreshStream extends ChangeNotifier {
 /// - Redirects authenticated users away from auth screens to home
 /// - Shows splash screen during initial auth state determination
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final authState = ref.read(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: GoRouterRefreshStream(
-      ref.watch(authRepositoryProvider).authStateChanges(),
+      ref.read(authRepositoryProvider).authStateChanges(),
     ),
     redirect: (context, state) {
       // Show splash screen while auth state is loading
-      if (authState is AsyncLoading) {
-        return '/';
-      }
+      if (authState.isLoading) return '/splash';
 
       final user = authState.value;
-      final isLoggingIn =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password';
-      final isSplash = state.matchedLocation == '/';
+      final location = state.matchedLocation;
+      final isAuthScreen =
+          location == '/login' ||
+          location == '/register' ||
+          location == '/forgot-password';
+      final isSplash = location == '/splash';
 
-      // User is authenticated
-      if (user != null) {
-        if (isSplash) return '/home';
-        if (isLoggingIn) {
-          final isRegister = state.matchedLocation == '/register';
-          if (user.isAnonymous && isRegister) return null;
-          return '/home';
-        }
-        return null; // Allow navigation to protected routes
-      } else {
-        // User is not authenticated
-        if (isSplash) return '/login'; // Redirect from splash to login
-        if (isLoggingIn) return null; // Allow access to auth screens
-        return '/login'; // Redirect from protected routes to login
+      // Not authenticated - redirect to login unless already on auth screen
+      if (user == null) {
+        return isAuthScreen ? null : '/login';
       }
+
+      // Authenticated - redirect from splash to home
+      if (isSplash) return '/home';
+
+      // Authenticated - redirect from auth screens to home (except anonymous users on register)
+      if (isAuthScreen) {
+        return (user.isAnonymous && location == '/register') ? null : '/home';
+      }
+
+      // Allow navigation to protected routes
+      return null;
     },
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
@@ -90,13 +93,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) {
-          final documentId = state.uri.queryParameters['documentId'];
-          return ChatScreen(documentId: documentId);
-        },
-      ),
       GoRoute(
         path: '/chat/:documentId',
         builder: (context, state) {
@@ -119,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               Text('Error: ${state.error}'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/home'),
+                onPressed: () => context.go('/splash'),
                 child: const Text('Go Home'),
               ),
             ],

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../providers/auth_provider.dart';
+import '../providers/auth_state_providers.dart';
+import '../providers/login_providers.dart';
+import '../providers/guest_signin_provider.dart';
 import '../widgets/auth_form.dart';
 
 /// Login screen for email/password authentication
@@ -19,6 +21,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     // Navigate to home on successful login
     ref.listen(loginProvider, (previous, next) {
@@ -53,10 +57,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 32),
 
                 // Logo
-                Icon(
-                  Icons.psychology,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
+                Image.asset(
+                  isDarkMode
+                      ? 'assets/images/logo_splash_dark.png'
+                      : 'assets/images/logo_splash.png',
+                  width: 80,
+                  height: 80,
                 ),
 
                 const SizedBox(height: 16),

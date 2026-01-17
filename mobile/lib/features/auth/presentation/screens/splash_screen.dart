@@ -47,6 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
@@ -59,26 +60,11 @@ class _SplashScreenState extends State<SplashScreen> {
               opacity: 1.0,
               duration: const Duration(milliseconds: 800),
               child: Image.asset(
-                'assets/images/logo.png',
+                isDarkMode
+                    ? 'assets/images/logo_splash_dark.png'
+                    : 'assets/images/logo_splash.png',
                 width: 120,
                 height: 120,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // App name text
-            Text(
-              'BrainVault',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Tagline
-            Text(
-              'Chat with your documents',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onPrimary.withValues(alpha: 0.8),
               ),
             ),
           ],

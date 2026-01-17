@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/domain/usecases/sign_out.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'auth_dependency_providers.dart';
 
 /// State class for logout operation
 class LogoutState {
@@ -14,12 +13,6 @@ class LogoutState {
     return LogoutState(isLoading: isLoading ?? this.isLoading, error: error);
   }
 }
-
-/// Provider for SignOutUseCase
-final logoutUseCaseProvider = Provider<SignOutUseCase>((ref) {
-  final authRepository = ref.watch(authRepositoryProvider);
-  return SignOutUseCase(authRepository: authRepository);
-});
 
 /// Notifier for managing logout state
 class LogoutNotifier extends Notifier<LogoutState> {
