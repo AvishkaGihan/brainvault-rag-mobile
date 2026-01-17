@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/login_providers.dart';
 import '../providers/registration_providers.dart';
 
@@ -233,14 +234,7 @@ class _AuthFormState extends ConsumerState<AuthForm> {
           child: FilledButton(
             onPressed: isFormValid && !isLoading ? _onSubmit : null,
             child: isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+                ? const LoadingIndicator(size: 24, color: Colors.white)
                 : Text(_isLoginMode ? 'Sign In' : 'Create Account'),
           ),
         ),

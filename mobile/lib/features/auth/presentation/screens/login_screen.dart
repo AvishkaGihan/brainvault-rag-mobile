@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/widgets/error_view.dart';
 import '../providers/auth_state_providers.dart';
 import '../providers/login_providers.dart';
 import '../providers/guest_signin_provider.dart';
@@ -166,90 +167,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final isTooManyAttempts = error.contains('Too many');
 
+    ErrorViewType type;
+    String title;
+    VoidCallback? onRetry;
+
     if (isNetworkError) {
-      _showNetworkErrorDialog(context, error, ref);
+      type = ErrorViewType.network;
+      title = 'Connection Error';
+      onRetry = () {
+        Navigator.of(context).pop();
+        // Retry - trigger login again with current form state
+        final formState = ref.read(loginFormProvider);
+        ref
+            .read(loginProvider.notifier)
+            .signIn(formState.email, formState.password);
+      };
     } else if (isTooManyAttempts) {
-      _showTooManyAttemptsDialog(context, error, ref);
+      type = ErrorViewType.rateLimit;
+      title = 'Too Many Attempts';
+      onRetry = null;
     } else {
-      _showGenericErrorDialog(context, error, ref);
+      type = ErrorViewType.auth;
+      title = 'Sign In Error';
+      onRetry = null;
     }
-  }
 
-  void _showNetworkErrorDialog(
-    BuildContext context,
-    String error,
-    WidgetRef ref,
-  ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Connection Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Retry - trigger login again with current form state
-              final formState = ref.read(loginFormProvider);
-              ref
-                  .read(loginProvider.notifier)
-                  .signIn(formState.email, formState.password);
-            },
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTooManyAttemptsDialog(
-    BuildContext context,
-    String error,
-    WidgetRef ref,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Too Many Attempts'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // AC3: Clear password field on error (security best practice)
-              ref.read(loginFormProvider.notifier).setPassword('');
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showGenericErrorDialog(
-    BuildContext context,
-    String error,
-    WidgetRef ref,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign In Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // AC3: Clear password field on error (security best practice)
-              ref.read(loginFormProvider.notifier).setPassword('');
-            },
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (context) => ErrorView(
+        title: title,
+        message: error,
+        type: type,
+        onRetry: onRetry,
+        onDismiss: () {
+          Navigator.of(context).pop();
+          // AC3: Clear password field on error (security best practice)
+          ref.read(loginFormProvider.notifier).setPassword('');
+        },
+        dismissText: 'OK',
       ),
     );
   }
