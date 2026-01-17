@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/auth_state_providers.dart';
 import 'logout_confirmation_dialog.dart';
 import 'guest_logout_warning_dialog.dart';
@@ -49,7 +50,7 @@ class AccountSection extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingIndicator()),
       error: (_, _) => const SizedBox.shrink(),
     );
   }

@@ -30,7 +30,10 @@ class LogoutConfirmationDialog extends ConsumerWidget {
               ? null
               : () => _performLogout(context, ref),
           child: logoutState.isLoading
-              ? const LoadingIndicator(size: 20, color: Colors.white)
+              ? LoadingIndicator(
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                )
               : const Text('Sign Out'),
         ),
       ],

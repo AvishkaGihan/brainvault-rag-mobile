@@ -194,9 +194,9 @@ class _AuthFormState extends ConsumerState<AuthForm> {
           const SizedBox(height: 8),
           Text(
             'Password must be at least 6 characters',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
         const SizedBox(height: 24),
@@ -234,7 +234,10 @@ class _AuthFormState extends ConsumerState<AuthForm> {
           child: FilledButton(
             onPressed: isFormValid && !isLoading ? _onSubmit : null,
             child: isLoading
-                ? const LoadingIndicator(size: 24, color: Colors.white)
+                ? LoadingIndicator(
+                    size: 24,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  )
                 : Text(_isLoginMode ? 'Sign In' : 'Create Account'),
           ),
         ),
@@ -245,7 +248,7 @@ class _AuthFormState extends ConsumerState<AuthForm> {
               _isLoginMode ? 'Signing in...' : 'Creating account...',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
