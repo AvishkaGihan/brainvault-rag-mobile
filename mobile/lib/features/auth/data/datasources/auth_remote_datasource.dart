@@ -19,6 +19,9 @@ abstract class AuthRemoteDataSource {
   /// Get the current authenticated user
   User? getCurrentUser();
 
+  /// Get auth state changes stream
+  Stream<User?> authStateChanges();
+
   /// Sign out the current user
   Future<void> signOut();
 
@@ -96,6 +99,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   User? getCurrentUser() {
     return _firebaseAuth.currentUser;
+  }
+
+  @override
+  Stream<User?> authStateChanges() {
+    return _firebaseAuth.authStateChanges();
   }
 
   @override

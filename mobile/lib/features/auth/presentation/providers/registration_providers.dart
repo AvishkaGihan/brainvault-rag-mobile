@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/utils/helpers.dart';
 import '../../../../core/utils/validators.dart';
 import 'auth_dependency_providers.dart';
 
@@ -152,7 +151,7 @@ class RegistrationNotifier extends AsyncNotifier<void> {
       await useCase(email, password);
       state = const AsyncValue.data(null);
     } catch (e, st) {
-      state = AsyncValue.error(mapAuthErrorToUserMessage(e), st);
+      state = AsyncValue.error(e.toString(), st);
     }
   }
 

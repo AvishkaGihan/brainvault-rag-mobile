@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/utils/helpers.dart';
 import 'auth_dependency_providers.dart';
 
 /// State class for guest sign-in process
@@ -36,10 +35,7 @@ class GuestSignInNotifier extends Notifier<GuestSignInState> {
       await useCase();
       state = state.copyWith(isLoading: false, error: null);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: mapAuthErrorToUserMessage(e),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 

@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
-import '../../../../core/error/exceptions.dart';
 
 /// Implementation of AuthRepository
 class AuthRepositoryImpl implements AuthRepository {
@@ -19,39 +18,27 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User> registerWithEmail(String email, String password) async {
-    try {
-      final userCredential = await remoteDataSource.registerWithEmail(
-        email,
-        password,
-      );
-      final firebaseUser = userCredential.user!;
+    final userCredential = await remoteDataSource.registerWithEmail(
+      email,
+      password,
+    );
+    final firebaseUser = userCredential.user!;
 
-      // Create user profile in Firestore
-      await remoteDataSource.createUserProfile(firebaseUser.uid, email);
+    // Create user profile in Firestore
+    await remoteDataSource.createUserProfile(firebaseUser.uid, email);
 
-      return _mapFirebaseUserToEntity(firebaseUser);
-    } on AuthException {
-      rethrow;
-    } catch (e) {
-      throw Exception('Registration failed: ${e.toString()}');
-    }
+    return _mapFirebaseUserToEntity(firebaseUser);
   }
 
   @override
   Future<User> signInWithEmail(String email, String password) async {
-    try {
-      final userCredential = await remoteDataSource.signInWithEmail(
-        email,
-        password,
-      );
-      final firebaseUser = userCredential.user!;
+    final userCredential = await remoteDataSource.signInWithEmail(
+      email,
+      password,
+    );
+    final firebaseUser = userCredential.user!;
 
-      return _mapFirebaseUserToEntity(firebaseUser);
-    } on AuthException {
-      rethrow;
-    } catch (e) {
-      throw Exception('Sign-in failed: ${e.toString()}');
-    }
+    return _mapFirebaseUserToEntity(firebaseUser);
   }
 
   @override
@@ -62,9 +49,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<User?> authStateChanges() {
-    return firebase.FirebaseAuth.instance.authStateChanges().map((
-      firebaseUser,
-    ) {
+    return remoteDataSource.authStateChanges().map((firebaseUser) {
       return firebaseUser != null
           ? _mapFirebaseUserToEntity(firebaseUser)
           : null;
