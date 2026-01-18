@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/error_view.dart';
@@ -22,8 +23,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     // Navigate to home on successful login
     ref.listen(loginProvider, (previous, next) {
@@ -47,91 +46,118 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(elevation: 0),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 32),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Logo
+                  SvgPicture.asset(
+                    'assets/images/logos/logo_mark.svg',
+                    width: 120,
+                    height: 120,
+                  ),
 
-                // Logo
-                Image.asset(
-                  isDarkMode
-                      ? 'assets/images/logo_splash_dark.png'
-                      : 'assets/images/logo_splash.png',
-                  width: 80,
-                  height: 80,
-                ),
+                  const SizedBox(height: 12),
 
-                const SizedBox(height: 48),
+                  // App name
+                  Text(
+                    'BrainVault',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
 
-                // Login form
-                const AuthForm(mode: AuthFormMode.login),
+                  const SizedBox(height: 4),
 
-                const SizedBox(height: 24),
+                  // Tagline
+                  Text(
+                    'Your Second Brain',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
 
-                // Forgot Password link
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.push('/forgot-password'),
-                    child: Text(
-                      'Forgot Password?',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
+                  const SizedBox(height: 20),
+
+                  // Login form
+                  const AuthForm(mode: AuthFormMode.login),
+
+                  const SizedBox(height: 12),
+
+                  // Forgot Password link
+                  Center(
+                    child: TextButton(
+                      onPressed: () => context.push('/forgot-password'),
+                      child: Text(
+                        'Forgot Password?',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
-                // Divider
-                const Divider(),
-                const SizedBox(height: 24),
+                  // Divider
+                  const Divider(),
+                  const SizedBox(height: 16),
 
-                // Guest login option
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
-                    onPressed: ref.watch(isSigningInProvider)
-                        ? null
-                        : () {
-                            ref.read(guestSignInProvider.notifier).signIn();
-                          },
-                    child: const Text('Continue as Guest'),
+                  // Guest login option
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: ref.watch(isSigningInProvider)
+                          ? null
+                          : () {
+                              ref.read(guestSignInProvider.notifier).signIn();
+                            },
+                      child: const Text('Continue as Guest'),
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 48),
+                  const SizedBox(height: 24),
 
-                // Sign up link
-                Center(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      GestureDetector(
-                        onTap: () => GoRouter.of(context).push('/register'),
-                        child: Text(
-                          'Sign Up',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  // Sign up link
+                  Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      ),
-                    ],
+                        GestureDetector(
+                          onTap: () => GoRouter.of(context).push('/register'),
+                          child: Text(
+                            'Sign Up',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
