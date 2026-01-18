@@ -42,7 +42,7 @@ class GoRouterRefreshStream extends ChangeNotifier {
 /// - Redirects authenticated users away from auth screens to home
 /// - Shows splash screen during initial auth state determination
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.read(authStateProvider);
+  final authState = ref.watch(authStateProvider);
 
   return GoRouter(
     initialLocation: '/splash',
