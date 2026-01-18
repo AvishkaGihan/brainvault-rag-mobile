@@ -20,6 +20,7 @@ dependencies:
   go_router: ^17.0.1
   shared_preferences: ^2.5.4
   cloud_firestore: ^6.1.1
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +39,9 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/logos/
+    - assets/images/splash/
+    - assets/images/icons/
     - assets/fonts/
 
   fonts:
@@ -50,21 +54,21 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/icon.png"
+  image_path: "assets/images/icons/app_icon_1024.png"
   remove_alpha_ios: true
   adaptive_icon_background: "#6750A4"
-  adaptive_icon_foreground: "assets/images/icon.png"
+  adaptive_icon_foreground: "assets/images/icons/app_icon_1024.png"
 
 flutter_native_splash:
   color: "#FFFBFE"
-  image: "assets/images/logo_splash.png"
+  image: "assets/images/splash/logo_splash.png"
   color_dark: "#1C1B1F"
-  image_dark: "assets/images/logo_splash_dark.png"
+  image_dark: "assets/images/splash/logo_splash.png"
   android: true
   ios: true
   web: false
   android_12:
-    image: "assets/images/logo_splash.png"
+    image: "assets/images/splash/logo_splash.png"
     icon_background_color: "#FFFBFE"
-    image_dark: "assets/images/logo_splash_dark.png"
+    image_dark: "assets/images/splash/logo_splash.png"
     icon_background_color_dark: "#1C1B1F"

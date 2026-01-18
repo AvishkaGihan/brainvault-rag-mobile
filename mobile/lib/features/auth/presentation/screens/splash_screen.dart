@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// Splash screen displayed during initial auth state check
 ///
@@ -47,7 +48,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
@@ -55,18 +55,65 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App logo with subtle fade-in animation
+            // App logo with app name and subtle fade-in animation
             AnimatedOpacity(
               opacity: 1.0,
               duration: const Duration(milliseconds: 800),
-              child: Image.asset(
-                isDarkMode
-                    ? 'assets/images/logo_splash_dark.png'
-                    : 'assets/images/logo_splash.png',
+              child: SvgPicture.asset(
+                'assets/images/logos/logo_mark.svg',
                 width: 120,
                 height: 120,
               ),
             ),
+            const SizedBox(height: 16),
+
+            // App name
+            Text(
+              'BrainVault',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onPrimary,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Tagline
+            Text(
+              'Your Second Brain',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onPrimary.withValues(alpha: 0.8),
+              ),
+            ),
+
+            const Spacer(),
+
+            // Loading indicator
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48.0),
+              child: Column(
+                children: [
+                  LinearProgressIndicator(
+                    minHeight: 4,
+                    backgroundColor: colorScheme.onPrimary.withValues(
+                      alpha: 0.2,
+                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      colorScheme.onPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Initializing...',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onPrimary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 48),
           ],
         ),
       ),
