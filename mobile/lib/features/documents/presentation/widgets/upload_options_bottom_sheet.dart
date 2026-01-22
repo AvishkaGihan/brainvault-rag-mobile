@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/upload_provider.dart';
 
@@ -53,15 +54,15 @@ class UploadOptionsBottomSheet extends ConsumerWidget {
 
           const SizedBox(height: 8),
 
-          // Paste Text option (disabled - coming in Story 3.2)
+          // Paste Text option
           ListTile(
             leading: Icon(
               Icons.text_snippet,
-              color: theme.colorScheme.secondary,
+              color: theme.colorScheme.primary,
               size: 32,
             ),
             title: const Text('Paste Text'),
-            subtitle: const Text('Coming soon in Story 3.2'),
+            subtitle: const Text('Type or paste text content directly'),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 8,
@@ -69,14 +70,9 @@ class UploadOptionsBottomSheet extends ConsumerWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            enabled: false,
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Text paste will be available in Story 3.2'),
-                ),
-              );
+              GoRouter.of(context).push('/text-input');
             },
           ),
 

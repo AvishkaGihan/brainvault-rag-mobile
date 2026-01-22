@@ -5,6 +5,7 @@ import '../../../../core/error/failures.dart';
 import '../../data/datasources/document_remote_datasource.dart';
 import '../../data/repositories/document_repository_impl.dart';
 import '../../domain/usecases/upload_document.dart';
+import '../../domain/usecases/upload_text_document.dart';
 
 /// Provider for document repository
 final documentRepositoryProvider = Provider<DocumentRepositoryImpl>((ref) {
@@ -15,6 +16,12 @@ final documentRepositoryProvider = Provider<DocumentRepositoryImpl>((ref) {
 final uploadDocumentUseCaseProvider = Provider<UploadDocument>((ref) {
   final repository = ref.watch(documentRepositoryProvider);
   return UploadDocument(repository);
+});
+
+/// Provider for upload text document use case
+final uploadTextDocumentUseCaseProvider = Provider<UploadTextDocument>((ref) {
+  final repository = ref.watch(documentRepositoryProvider);
+  return UploadTextDocument(repository);
 });
 
 /// Notifier for managing selected file state
@@ -61,3 +68,31 @@ final fileSelectionProvider =
     AsyncNotifierProvider<FileSelectionNotifier, PlatformFile?>(() {
       return FileSelectionNotifier();
     });
+
+/// Notifier for managing text upload state
+class UploadTextNotifier extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {
+    // Initial state - no upload in progress
+  }
+
+  /// Upload text document with title and content
+  Future<void> uploadText(String title, String content) async {
+    state = const AsyncLoading();
+
+    try {
+      final useCase = ref.read(uploadTextDocumentUseCaseProvider);
+      await useCase(title: title, content: content);
+
+      state = const AsyncData(null);
+      // Navigation and success message handled by UI listening to state
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+}
+
+/// Provider for UploadTextNotifier
+final uploadTextProvider = AsyncNotifierProvider<UploadTextNotifier, void>(() {
+  return UploadTextNotifier();
+});

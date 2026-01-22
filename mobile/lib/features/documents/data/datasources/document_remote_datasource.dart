@@ -1,5 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 
+import '../../domain/entities/document.dart';
+
 /// Remote data source for document operations
 /// Handles file picking and server communication
 class DocumentRemoteDataSource {
@@ -26,6 +28,26 @@ class DocumentRemoteDataSource {
   /// TODO: Implement in Story 3.3 - Implement Document Upload API Endpoint
   Future<Map<String, dynamic>> uploadToServer(PlatformFile file) async {
     throw UnimplementedError('Upload will be implemented in Story 3.3');
+  }
+
+  /// Upload text document to server (placeholder for Story 3.3)
+  /// Returns mock Document for now, will be replaced with actual API call
+  Future<Document> uploadTextDocument({
+    required String title,
+    required String content,
+  }) async {
+    // TODO (Story 3.3): Implement actual API call to POST /api/v1/documents/text
+    // For now, simulate success with delay
+    await Future.delayed(const Duration(seconds: 2));
+
+    return Document(
+      id: 'text_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      fileName: '$title.txt',
+      fileSize: content.length,
+      status: DocumentStatus.processing,
+      createdAt: DateTime.now(),
+    );
   }
 
   /// Fetch documents from server

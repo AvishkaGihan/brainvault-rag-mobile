@@ -52,6 +52,45 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }
 
   @override
+  Future<Document> uploadTextDocument({
+    required String title,
+    required String content,
+  }) async {
+    try {
+      // Validate title
+      if (title.trim().isEmpty) {
+        throw const TitleRequiredFailure();
+      }
+
+      if (title.length > 100) {
+        throw const TitleTooLongFailure();
+      }
+
+      // Validate content
+      if (content.trim().length < 10) {
+        throw const TextTooShortFailure();
+      }
+
+      if (content.length > 50000) {
+        throw const TextTooLongFailure();
+      }
+
+      // Call data source to upload
+      final document = await _remoteDataSource.uploadTextDocument(
+        title: title,
+        content: content,
+      );
+
+      return document;
+    } on DocumentFailure {
+      rethrow; // Re-throw domain failures as-is
+    } catch (e) {
+      // Wrap unexpected errors in UnknownFailure
+      throw UnknownFailure('Failed to upload text: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<List<Document>> getDocuments() async {
     // TODO: Implement in Story 4.1
     // Stub: return empty list
