@@ -11,6 +11,12 @@ abstract class DocumentRepository {
   /// Upload document to server (to be implemented in Story 3.3)
   Future<Document> uploadDocument(PlatformFile file);
 
+  /// Upload text document to server (placeholder for Story 3.3)
+  Future<Document> uploadTextDocument({
+    required String title,
+    required String content,
+  });
+
   /// Get all documents for current user (to be implemented in Story 4.1)
   Future<List<Document>> getDocuments();
 

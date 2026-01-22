@@ -11,6 +11,7 @@ import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
 import '../features/documents/presentation/screens/upload_screen.dart';
+import '../features/documents/presentation/screens/text_input_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/auth/presentation/screens/settings_screen.dart';
 
@@ -97,6 +98,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/upload',
         builder: (context, state) => const UploadScreen(),
+      ),
+      GoRoute(
+        path: '/text-input',
+        builder: (context, state) => const TextInputScreen(),
       ),
       GoRoute(
         path: '/chat/:documentId',

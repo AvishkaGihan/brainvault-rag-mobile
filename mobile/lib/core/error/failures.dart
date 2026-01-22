@@ -91,6 +91,30 @@ class DocumentUploadFailure extends DocumentFailure {
   const DocumentUploadFailure([super.message = 'Failed to upload document']);
 }
 
+class TextTooLongFailure extends DocumentFailure {
+  const TextTooLongFailure([
+    super.message = 'Text too long. Maximum 50,000 characters.',
+  ]);
+}
+
+class TextTooShortFailure extends DocumentFailure {
+  const TextTooShortFailure([
+    super.message = 'Please enter at least 10 characters of text.',
+  ]);
+}
+
+class TitleRequiredFailure extends DocumentFailure {
+  const TitleRequiredFailure([
+    super.message = 'Please enter a document title.',
+  ]);
+}
+
+class TitleTooLongFailure extends DocumentFailure {
+  const TitleTooLongFailure([
+    super.message = 'Title too long. Maximum 100 characters.',
+  ]);
+}
+
 /// Cache-related failures
 sealed class CacheFailure extends Failure {
   const CacheFailure(super.message);
