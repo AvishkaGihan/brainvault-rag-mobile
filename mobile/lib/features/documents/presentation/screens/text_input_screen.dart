@@ -114,7 +114,7 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
             Text(message),
           ],
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
