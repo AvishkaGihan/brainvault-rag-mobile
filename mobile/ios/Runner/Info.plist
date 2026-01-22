@@ -51,5 +51,7 @@
 		<string>Need access to select PDF documents</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Need access to scan documents</string>
+		<key>NSDocumentPickerUsageDescription</key>
+		<string>We need access to select PDF files</string>
 	</dict>
 </plist>

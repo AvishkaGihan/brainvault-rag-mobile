@@ -10,6 +10,7 @@ import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
+import '../features/documents/presentation/screens/upload_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/auth/presentation/screens/settings_screen.dart';
 
@@ -93,6 +94,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/upload',
+        builder: (context, state) => const UploadScreen(),
+      ),
       GoRoute(
         path: '/chat/:documentId',
         builder: (context, state) {

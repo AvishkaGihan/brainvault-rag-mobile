@@ -1,14 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../../../shared/widgets/app_bar.dart';
+import '../../../../shared/widgets/error_view.dart';
+import '../../../../shared/widgets/loading_indicator.dart';
+import '../providers/documents_provider.dart';
+import '../widgets/empty_documents.dart';
+import '../widgets/upload_fab.dart';
+import '../widgets/upload_options_bottom_sheet.dart';
+import '../providers/upload_provider.dart';
+
+/// Home screen displaying documents library
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  void _showUploadOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => const UploadOptionsBottomSheet(),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final documentsState = ref.watch(documentsProvider);
+
+    // Listen for file selection and navigate to upload screen
+    ref.listen(fileSelectionProvider, (_, state) {
+      state.whenOrNull(
+        data: (file) {
+          if (file != null) {
+            context.push('/upload');
+          }
+        },
+      );
+    });
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BrainVault'),
+      appBar: CustomAppBar(
+        title: 'BrainVault',
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -17,30 +51,24 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Home Screen',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 16),
-            const Text('Documents and chat features will be integrated here'),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => _showPlaceholder(context),
-              child: const Text('View Documents'),
-            ),
-          ],
+      body: documentsState.when(
+        data: (documents) {
+          if (documents.isEmpty) {
+            return const EmptyDocuments();
+          }
+          // TODO: Show document list when documents exist (Story 4.1)
+          return const EmptyDocuments();
+        },
+        loading: () => const Center(child: LoadingIndicator()),
+        error: (error, stack) => ErrorView(
+          title: 'Error loading documents',
+          message: error.toString(),
+          type: ErrorViewType.generic,
         ),
       ),
-    );
-  }
-
-  void _showPlaceholder(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Document management coming soon')),
+      floatingActionButton: UploadFab(
+        onPressed: () => _showUploadOptions(context),
+      ),
     );
   }
 }
