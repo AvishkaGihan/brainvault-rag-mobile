@@ -14,18 +14,20 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.byType(AppBar), findsOneWidget);
       // LoginScreen now has email/password form instead of BrainVault title
       expect(find.text('Email'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
     });
 
     testWidgets('HomeScreen is a valid widget', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+      await tester.pumpWidget(
+        ProviderScope(child: MaterialApp(home: HomeScreen())),
+      );
 
       expect(find.byType(HomeScreen), findsOneWidget);
       expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.text('Home Screen'), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('BrainVault'), findsOneWidget);
     });
 
     testWidgets('ChatScreen without documentId', (WidgetTester tester) async {
@@ -62,12 +64,13 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(child: MaterialApp(home: LoginScreen())),
       );
-      expect(find.byType(AppBar), findsOneWidget);
-      // LoginScreen now shows login form
+      // LoginScreen doesn't have AppBar
       expect(find.text('Email'), findsOneWidget);
 
       // Test HomeScreen
-      await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+      await tester.pumpWidget(
+        ProviderScope(child: MaterialApp(home: HomeScreen())),
+      );
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('BrainVault'), findsOneWidget);
     });

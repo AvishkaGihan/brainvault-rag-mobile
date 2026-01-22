@@ -11,23 +11,20 @@ void main() {
   group('RegisterScreen Widget Tests', () {
     // Helper function to reduce boilerplate
     Widget createRegisterScreen() {
-      return const ProviderScope(
-        child: MaterialApp(home: Scaffold(body: RegisterScreen())),
-      );
+      return const ProviderScope(child: MaterialApp(home: RegisterScreen()));
     }
 
-    testWidgets('should display Create Account title in AppBar', (
+    testWidgets('should display registration form elements', (
       WidgetTester tester,
     ) async {
       // Arrange & Act
       await tester.pumpWidget(createRegisterScreen());
 
-      // Assert
-      expect(find.byType(AppBar), findsOneWidget);
-      final appBar = tester.widget<AppBar>(find.byType(AppBar));
-      expect(appBar.title, isA<Text>());
-      final titleText = (appBar.title as Text).data;
-      expect(titleText, 'Create Account');
+      // Assert - No AppBar on registration screen per design
+      expect(find.byType(AppBar), findsNothing);
+
+      // Should have form fields
+      expect(find.byType(Scaffold), findsOneWidget);
     });
 
     testWidgets(
@@ -74,19 +71,23 @@ void main() {
       when(() => mockGoRouter.pop()).thenAnswer((_) {});
 
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: InheritedGoRouter(
-              goRouter: mockGoRouter,
-              child: const Scaffold(body: RegisterScreen()),
-            ),
+        InheritedGoRouter(
+          goRouter: mockGoRouter,
+          child: const ProviderScope(
+            child: MaterialApp(home: RegisterScreen()),
           ),
         ),
       );
 
       // Act
+      await tester.dragUntilVisible(
+        find.text('Sign In'),
+        find.byType(SingleChildScrollView),
+        const Offset(0, -50),
+      );
+      await tester.pumpAndSettle();
       final signInLink = find.text('Sign In');
-      await tester.tap(signInLink);
+      await tester.tap(signInLink, warnIfMissed: false);
       await tester.pumpAndSettle();
 
       // Assert
@@ -143,7 +144,9 @@ void main() {
         of: find.byType(Column),
         matching: find.byWidgetPredicate(
           (widget) =>
-              widget is Padding && widget.padding == const EdgeInsets.all(24.0),
+              widget is Padding &&
+              widget.padding ==
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         ),
       );
       expect(paddingWidget, findsWidgets);
@@ -161,17 +164,6 @@ void main() {
 
       // The fields should appear in order: Email, Password, Confirm Password
       // This is ensured by the AuthForm widget in register mode
-    });
-
-    testWidgets('should have AppBar with back button capability', (
-      WidgetTester tester,
-    ) async {
-      // Arrange & Act
-      await tester.pumpWidget(createRegisterScreen());
-
-      // Assert - AppBar should exist and allow navigation
-      final appBar = tester.widget<AppBar>(find.byType(AppBar));
-      expect(appBar.elevation, 0);
     });
 
     testWidgets('should use consistent theming with login screen', (

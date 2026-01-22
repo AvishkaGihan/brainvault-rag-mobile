@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
@@ -20,10 +21,8 @@ void main() {
       // Arrange & Act
       await tester.pumpWidget(createLoginScreen());
 
-      // Assert
-      expect(find.byType(AppBar), findsOneWidget);
-      final appBar = tester.widget<AppBar>(find.byType(AppBar));
-      expect(appBar.title, isNull); // AppBar no longer has a title
+      // Assert - LoginScreen no longer has AppBar
+      expect(find.byType(AppBar), findsNothing);
     });
 
     testWidgets('should display login form with email and password fields', (
@@ -58,31 +57,35 @@ void main() {
       expect(find.byType(TextButton), findsWidgets);
     });
 
-    testWidgets('should show snackbar when Forgot Password is tapped', (
-      WidgetTester tester,
-    ) async {
-      // Arrange
-      await tester.pumpWidget(createLoginScreen());
+    testWidgets(
+      'should navigate to forgot password when Forgot Password is tapped',
+      (WidgetTester tester) async {
+        // Arrange
+        final mockGoRouter = MockGoRouter();
+        when(
+          () => mockGoRouter.push('/forgot-password'),
+        ).thenAnswer((_) {}); // ignore: body_might_complete_normally
 
-      // Act - Scroll to make Forgot Password link visible
-      await tester.dragUntilVisible(
-        find.text('Forgot Password?'),
-        find.byType(SingleChildScrollView),
-        const Offset(0, -50),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          InheritedGoRouter(goRouter: mockGoRouter, child: createLoginScreen()),
+        );
 
-      final forgotPasswordButton = find.text('Forgot Password?');
-      await tester.tap(forgotPasswordButton);
-      await tester.pumpAndSettle();
+        // Act - Scroll to make Forgot Password link visible
+        await tester.dragUntilVisible(
+          find.text('Forgot Password?'),
+          find.byType(SingleChildScrollView),
+          const Offset(0, -50),
+        );
+        await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.byType(SnackBar), findsOneWidget);
-      expect(
-        find.text('Password reset coming soon. Please contact support.'),
-        findsOneWidget,
-      );
-    });
+        final forgotPasswordButton = find.text('Forgot Password?');
+        await tester.tap(forgotPasswordButton);
+        await tester.pumpAndSettle();
+
+        // Assert
+        verify(() => mockGoRouter.push('/forgot-password')).called(1);
+      },
+    );
 
     testWidgets('should display Continue as Guest button', (
       WidgetTester tester,
@@ -178,7 +181,7 @@ void main() {
       await tester.pumpWidget(createLoginScreen());
 
       // Assert
-      expect(find.byIcon(Icons.psychology), findsOneWidget);
+      expect(find.byType(SvgPicture), findsOneWidget);
     });
 
     testWidgets('should display BrainVault title', (WidgetTester tester) async {
