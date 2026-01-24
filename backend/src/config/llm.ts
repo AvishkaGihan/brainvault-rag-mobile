@@ -5,8 +5,7 @@
  */
 
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import dotenv from "dotenv";
-dotenv.config();
+import { env } from "./env";
 
 /**
  * Create a configured LLM instance
@@ -17,7 +16,7 @@ dotenv.config();
 export const createLLM = () => {
   return new ChatGoogleGenerativeAI({
     model: "gemini-pro",
-    apiKey: process.env.GOOGLE_API_KEY,
+    apiKey: env.googleApiKey,
     temperature: 0.3,
   });
 };

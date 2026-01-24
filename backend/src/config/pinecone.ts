@@ -19,26 +19,7 @@
  */
 
 import { Pinecone } from "@pinecone-database/pinecone";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
-
-// Validate required environment variables at startup
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_INDEX = process.env.PINECONE_INDEX;
-
-if (!PINECONE_API_KEY) {
-  throw new Error(
-    "PINECONE_API_KEY environment variable is required but not set"
-  );
-}
-
-if (!PINECONE_INDEX) {
-  throw new Error(
-    "PINECONE_INDEX environment variable is required but not set"
-  );
-}
+import { env } from "./env";
 
 /**
  * Initialize Pinecone client
@@ -55,15 +36,15 @@ let pineconeInstance: Pinecone | undefined;
 
 try {
   pineconeInstance = new Pinecone({
-    apiKey: PINECONE_API_KEY,
+    apiKey: env.pineconeApiKey,
   });
 } catch (error) {
   console.error(
     "Failed to initialize Pinecone client:",
-    error instanceof Error ? error.message : String(error)
+    error instanceof Error ? error.message : String(error),
   );
   console.error(
-    "Vector database will be unavailable. Check PINECONE_API_KEY and network connectivity."
+    "Vector database will be unavailable. Check PINECONE_API_KEY and network connectivity.",
   );
 }
 
@@ -91,11 +72,11 @@ let indexInstance: any;
 
 if (pineconeInstance) {
   try {
-    indexInstance = pineconeInstance.index(PINECONE_INDEX);
+    indexInstance = pineconeInstance.index(env.pineconeIndex);
   } catch (error) {
     console.error(
       "Failed to connect to Pinecone index:",
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     );
   }
 }

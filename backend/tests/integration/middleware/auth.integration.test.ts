@@ -44,6 +44,27 @@ jest.mock("../../../src/config/firebase", () => ({
   storage: {},
 }));
 
+// Mock getFirestore to prevent Firebase initialization
+jest.mock("firebase-admin/firestore", () => ({
+  getFirestore: jest.fn(() => ({
+    collection: jest.fn(() => ({
+      doc: jest.fn(() => ({
+        set: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        get: jest
+          .fn<() => Promise<any>>()
+          .mockResolvedValue({ data: () => ({}) }),
+        delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      })),
+    })),
+  })),
+  Timestamp: {
+    now: jest.fn(() => ({ toDate: () => new Date() })),
+  },
+  FieldValue: {
+    serverTimestamp: jest.fn(),
+  },
+}));
+
 /**
  * Test application setup
  */
@@ -57,16 +78,19 @@ beforeAll(() => {
   app.use("/api", router);
 
   // Add a test protected route for testing
-  app.get("/api/test-protected", (req: Request & { user?: { uid: string } }, res: Response) => {
-    res.json({
-      success: true,
-      data: {
-        message: "Protected route accessed",
-        userId: req.user?.uid,
-      },
-      meta: { timestamp: new Date().toISOString() },
-    });
-  });
+  app.get(
+    "/api/test-protected",
+    (req: Request & { user?: { uid: string } }, res: Response) => {
+      res.json({
+        success: true,
+        data: {
+          message: "Protected route accessed",
+          userId: req.user?.uid,
+        },
+        meta: { timestamp: new Date().toISOString() },
+      });
+    },
+  );
 
   // Error handlers
   app.use(notFoundHandler);
