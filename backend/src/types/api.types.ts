@@ -17,6 +17,16 @@ export const ERROR_CODES = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   CONFIGURATION_ERROR: "CONFIGURATION_ERROR",
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  INVALID_FILE_TYPE: "INVALID_FILE_TYPE",
+  NO_FILE_PROVIDED: "NO_FILE_PROVIDED",
+  INVALID_PDF_FILE: "INVALID_PDF_FILE",
+  UPLOAD_FAILED: "UPLOAD_FAILED",
+  INVALID_TITLE: "INVALID_TITLE",
+  TEXT_TOO_SHORT: "TEXT_TOO_SHORT",
+  TEXT_TOO_LONG: "TEXT_TOO_LONG",
+  MISSING_FIELDS: "MISSING_FIELDS",
+  FILE_TOO_LARGE: "FILE_TOO_LARGE",
+  FILE_UPLOAD_ERROR: "FILE_UPLOAD_ERROR",
 } as const;
 
 /**
@@ -49,4 +59,34 @@ export interface HealthCheckData {
   status: "ok";
   uptime: number;
   timestamp: string;
+}
+
+/**
+ * Custom error class for API errors with structured error response format
+ */
+export class AppError extends Error {
+  constructor(
+    public code: (typeof ERROR_CODES)[keyof typeof ERROR_CODES],
+    public message: string,
+    public statusCode: number = 500,
+    public details: Record<string, any> = {},
+  ) {
+    super(message);
+    this.name = "AppError";
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  /**
+   * Convert to API error response format
+   */
+  toJSON() {
+    return {
+      success: false,
+      error: {
+        code: this.code,
+        message: this.message,
+        details: this.details,
+      },
+    };
+  }
 }

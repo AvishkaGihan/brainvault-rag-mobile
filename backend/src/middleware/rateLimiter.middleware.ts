@@ -19,6 +19,7 @@
 
 import rateLimit from "express-rate-limit";
 import { ApiResponse } from "../types";
+import { createErrorResponse } from "../utils/helpers";
 
 /**
  * General API rate limiter
@@ -42,16 +43,10 @@ export const generalApiLimiter = rateLimit({
   skipFailedRequests: false, // Count all requests
   validate: false, // Disable validation - we don't rely on IP tracking
   handler: (req, res) => {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        code: "RATE_LIMIT_EXCEEDED",
-        message: "Too many requests. Please try again in 15 minutes.",
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-      },
-    };
+    const response = createErrorResponse(
+      "RATE_LIMIT_EXCEEDED",
+      "Too many requests. Please try again in 15 minutes.",
+    );
     res.status(429).json(response);
   },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
@@ -84,16 +79,10 @@ export const chatApiLimiter = rateLimit({
   skipFailedRequests: false,
   validate: false, // Disable validation - we don't rely on IP tracking
   handler: (req, res) => {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        code: "RATE_LIMIT_EXCEEDED",
-        message: "Query limit reached. Please wait a moment.",
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-      },
-    };
+    const response = createErrorResponse(
+      "RATE_LIMIT_EXCEEDED",
+      "Query limit reached. Please wait a moment.",
+    );
     res.status(429).json(response);
   },
   standardHeaders: true,
