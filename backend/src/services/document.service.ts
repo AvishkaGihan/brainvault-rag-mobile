@@ -7,6 +7,7 @@ import {
 import { validatePDFContent, validateTextDocument } from "../utils/validation";
 import { AppError } from "../types/api.types";
 import type { Document, CreateDocumentDTO } from "../types/document.types";
+import { EmbeddingService } from "./embedding.service";
 
 /**
  * Document Service
@@ -15,6 +16,7 @@ import type { Document, CreateDocumentDTO } from "../types/document.types";
  */
 export class DocumentService {
   private db = getFirestore();
+  private embeddingService = new EmbeddingService();
 
   /**
    * Upload PDF document to Storage and create Firestore record
@@ -125,5 +127,20 @@ export class DocumentService {
     // Return document with actual timestamp
     const created = await docRef.get();
     return created.data() as Document;
+  }
+
+  /**
+   * Trigger text extraction for uploaded document (Story 3.4 integration)
+   * AC1, AC3: Background processing trigger
+   *
+   * @param documentId - Document ID to process
+   */
+  private async triggerTextExtraction(documentId: string): Promise<void> {
+    try {
+      await this.embeddingService.extractTextFromDocument(documentId);
+    } catch (error) {
+      console.error(`Text extraction failed for ${documentId}:`, error);
+      // Error handling is done within the embedding service
+    }
   }
 }

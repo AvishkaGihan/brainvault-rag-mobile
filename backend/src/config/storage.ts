@@ -1,5 +1,5 @@
 import { getStorage, Storage } from "firebase-admin/storage";
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
 
 let storageInstance: Storage | null = null;
 
