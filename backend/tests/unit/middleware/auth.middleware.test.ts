@@ -19,7 +19,7 @@ import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import { Request, Response, NextFunction } from "express";
 import { verifyAuth } from "../../../src/middleware/auth.middleware";
 import { auth } from "../../../src/config/firebase";
-import { AppError } from "../../../src/middleware/error.middleware";
+import { AppError } from "../../../src/types/api.types";
 
 type MockRequest = Request & {
   user?: {
@@ -374,7 +374,9 @@ describe("Auth Middleware - verifyAuth", () => {
   describe("Edge Cases", () => {
     it("should handle multiple Bearer keywords in header", async () => {
       // Arrange
-      const req = createMockRequest(`Bearer Bearer ${VALID_TOKEN}`) as MockRequest;
+      const req = createMockRequest(
+        `Bearer Bearer ${VALID_TOKEN}`,
+      ) as MockRequest;
       const res = createMockResponse() as Response;
       const next = createMockNext();
 

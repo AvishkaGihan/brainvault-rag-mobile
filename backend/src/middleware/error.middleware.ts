@@ -4,19 +4,8 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { ApiResponse, ERROR_CODES } from "../types";
-
-export class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    public code: keyof typeof ERROR_CODES,
-    message: string,
-    public details?: Record<string, unknown>
-  ) {
-    super(message);
-    Object.setPrototypeOf(this, AppError.prototype);
-  }
-}
+import { ApiResponse, ERROR_CODES, AppError } from "../types";
+import { createErrorResponse } from "../utils/helpers";
 
 /**
  * Global error handler middleware
@@ -26,10 +15,8 @@ export function errorHandler(
   err: unknown,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
-  const timestamp = new Date().toISOString();
-
   // Default error
   let statusCode = 500;
   let code: keyof typeof ERROR_CODES = "INTERNAL_SERVER_ERROR";
@@ -49,7 +36,7 @@ export function errorHandler(
   }
 
   // Log error with context
-  console.error(`[${timestamp}] Error (${code}):`, {
+  console.error(`[${new Date().toISOString()}] Error (${code}):`, {
     statusCode,
     code,
     message,
@@ -59,18 +46,7 @@ export function errorHandler(
   });
 
   // Return standard error response
-  const response: ApiResponse<null> = {
-    success: false,
-    error: {
-      code,
-      message,
-      ...(details && { details }),
-    },
-    meta: {
-      timestamp,
-    },
-  };
-
+  const response = createErrorResponse(code, message, details);
   res.status(statusCode).json(response);
 }
 
@@ -78,17 +54,9 @@ export function errorHandler(
  * 404 Not Found handler
  */
 export function notFoundHandler(req: Request, res: Response): void {
-  const timestamp = new Date().toISOString();
-  const response: ApiResponse<null> = {
-    success: false,
-    error: {
-      code: ERROR_CODES.NOT_FOUND,
-      message: `Route not found: ${req.method} ${req.path}`,
-    },
-    meta: {
-      timestamp,
-    },
-  };
-
+  const response = createErrorResponse(
+    ERROR_CODES.NOT_FOUND,
+    `Route not found: ${req.method} ${req.path}`,
+  );
   res.status(404).json(response);
 }

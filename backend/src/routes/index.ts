@@ -17,6 +17,7 @@
 
 import { Router } from "express";
 import { router as healthRoutes } from "./health.routes";
+import { documentRoutes } from "./document.routes";
 import { verifyAuth } from "../middleware/auth.middleware";
 import {
   generalApiLimiter,
@@ -45,8 +46,14 @@ router.use(verifyAuth);
 router.use(generalApiLimiter);
 
 /**
+ * Document routes (Story 3.3)
+ * POST /api/v1/documents/upload - Upload PDF document
+ * POST /api/v1/documents/text - Create text document
+ */
+router.use("/v1/documents", documentRoutes);
+
+/**
  * Future routes will be added here:
- * - Document routes: /api/v1/documents (with chatApiLimiter for chat endpoints)
  * - User routes: /api/v1/users
  * - Chat routes: /api/v1/documents/:id/chat (with chatApiLimiter)
  *

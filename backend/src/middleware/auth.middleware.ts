@@ -16,7 +16,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { auth } from "../config/firebase";
-import { AppError } from "./error.middleware";
+import { AppError } from "../types";
 
 /**
  * Verify Firebase JWT token and populate req.user
@@ -43,9 +43,9 @@ export async function verifyAuth(
     // Check if header exists and has Bearer format
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       throw new AppError(
-        401,
         "UNAUTHORIZED",
         "No authentication token provided",
+        401,
       );
     }
 
@@ -54,9 +54,9 @@ export async function verifyAuth(
 
     if (!token || !token.trim()) {
       throw new AppError(
-        401,
         "UNAUTHORIZED",
         "No authentication token provided",
+        401,
       );
     }
 
@@ -75,9 +75,9 @@ export async function verifyAuth(
     } catch (verifyError) {
       // Token verification failed (invalid, expired, revoked)
       throw new AppError(
-        401,
         "UNAUTHORIZED",
         "Invalid or expired authentication token",
+        401,
       );
     }
   } catch (error) {
