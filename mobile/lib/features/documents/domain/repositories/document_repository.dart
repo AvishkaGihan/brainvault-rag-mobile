@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 
 import '../entities/document.dart';
+import '../entities/document_status.dart';
 
 /// Abstract repository for document operations
 abstract class DocumentRepository {
@@ -11,7 +12,7 @@ abstract class DocumentRepository {
   /// Upload document to server (to be implemented in Story 3.3)
   Future<Document> uploadDocument(PlatformFile file);
 
-  /// Upload text document to server (placeholder for Story 3.3)
+  /// Upload text document to server (implemented in Story 3.2)
   Future<Document> uploadTextDocument({
     required String title,
     required String content,
@@ -19,6 +20,10 @@ abstract class DocumentRepository {
 
   /// Get all documents for current user (to be implemented in Story 4.1)
   Future<List<Document>> getDocuments();
+
+  /// Get processing status for a document (Story 3.8)
+  /// Returns DocumentStatusInfo with status, errorMessage, progress, processingStage
+  Future<DocumentStatusInfo> getDocumentStatus(String documentId);
 
   /// Delete a document (to be implemented in Story 4.5)
   Future<void> deleteDocument(String documentId);

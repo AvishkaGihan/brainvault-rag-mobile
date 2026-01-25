@@ -7,7 +7,7 @@ void main() {
     late DocumentRemoteDataSource dataSource;
 
     setUp(() {
-      dataSource = const DocumentRemoteDataSource();
+      dataSource = DocumentRemoteDataSource();
     });
 
     test(
@@ -19,19 +19,11 @@ void main() {
       },
     );
 
-    test('should have stub methods for future stories', () {
-      // Verify stub methods exist
-      expect(
-        () => dataSource.uploadToServer(
-          PlatformFile(name: 'test.pdf', size: 100),
-        ),
-        throwsUnimplementedError,
-      );
-      expect(() => dataSource.fetchDocuments(), throwsUnimplementedError);
-      expect(
-        () => dataSource.deleteFromServer('123'),
-        throwsUnimplementedError,
-      );
+    test('should expose upload and fetch methods', () {
+      expect(dataSource.uploadToServer, isA<Function>());
+      expect(dataSource.uploadTextDocument, isA<Function>());
+      expect(dataSource.fetchDocuments, isA<Function>());
+      expect(dataSource.deleteFromServer, isA<Function>());
     });
   });
 }

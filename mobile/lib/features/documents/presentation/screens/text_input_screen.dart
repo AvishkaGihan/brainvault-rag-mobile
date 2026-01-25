@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/app_bar.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
+import '../../domain/entities/document.dart';
 import '../providers/upload_provider.dart';
+import '../widgets/processing_status_card.dart';
 
 /// Screen for pasting or typing text content to create a document
 class TextInputScreen extends ConsumerStatefulWidget {
@@ -200,17 +202,28 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final uploadState = ref.watch(uploadTextProvider);
-    final isLoading = uploadState.isLoading;
+    final statusState = ref.watch(documentStatusProvider);
+    final status = statusState.asData?.value;
+    final isProcessing =
+        status != null &&
+        (status.status == DocumentStatus.processing ||
+            status.status == DocumentStatus.uploading ||
+            status.status == DocumentStatus.uploaded ||
+            status.status == DocumentStatus.pending);
+    final isLoading = uploadState.isLoading || statusState.isLoading;
+    final isFormEnabled = !isLoading && !isProcessing;
+    final showStatusCard =
+        statusState.isLoading ||
+        statusState.hasError ||
+        statusState.asData?.value != null;
 
     // Listen to upload state changes
-    ref.listen<AsyncValue<void>>(uploadTextProvider, (previous, next) {
+    ref.listen<AsyncValue<Document?>>(uploadTextProvider, (previous, next) {
       next.when(
-        data: (_) {
-          // Success - navigate back
-          _showSuccess('Document created successfully');
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
+        data: (document) {
+          if (document == null) return;
+          _showSuccess('Document created. Processing started.');
+          ref.read(documentStatusProvider.notifier).pollStatus(document.id);
         },
         error: (error, _) {
           // Show error
@@ -251,7 +264,7 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
               // Title field
               TextField(
                 controller: _titleController,
-                enabled: !isLoading,
+                enabled: isFormEnabled,
                 maxLength: maxTitleLength,
                 decoration: InputDecoration(
                   labelText: 'Document Title',
@@ -272,7 +285,7 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
               Expanded(
                 child: TextField(
                   controller: _textController,
-                  enabled: !isLoading,
+                  enabled: isFormEnabled,
                   maxLines: null,
                   minLines: 10,
                   maxLength: maxCharacters,
@@ -316,7 +329,7 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
               // Save button
               ElevatedButton(
                 onPressed:
-                    isLoading ||
+                    !isFormEnabled ||
                         _textController.text.trim().length < minTextLength ||
                         _titleController.text.trim().isEmpty
                     ? null
@@ -328,6 +341,24 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
                     ? const LoadingIndicator(size: 20, strokeWidth: 2)
                     : const Text('Save'),
               ),
+              if (showStatusCard)
+                ProcessingStatusCard(
+                  statusState: statusState,
+                  onRetry: () {
+                    final currentStatus = statusState.asData?.value?.status;
+                    if (currentStatus == DocumentStatus.failed) {
+                      _handleSave();
+                      return;
+                    }
+                    ref.read(documentStatusProvider.notifier).retry();
+                  },
+                  onDone: () {
+                    ref.read(documentStatusProvider.notifier).clear();
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                ),
             ],
           ),
         ),

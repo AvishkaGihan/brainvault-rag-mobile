@@ -24,7 +24,7 @@ void main() {
 
       // Verify Paste Text option (disabled)
       expect(find.text('Paste Text'), findsOneWidget);
-      expect(find.text('Coming soon in Story 3.2'), findsOneWidget);
+      expect(find.text('Type or paste text content directly'), findsOneWidget);
       expect(find.byIcon(Icons.text_snippet), findsOneWidget);
     });
 

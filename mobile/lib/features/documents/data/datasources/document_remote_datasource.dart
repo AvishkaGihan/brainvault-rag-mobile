@@ -1,11 +1,15 @@
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-
-import '../../domain/entities/document.dart';
+import '../../../../core/network/dio_client.dart';
+import '../models/document_status_model.dart';
 
 /// Remote data source for document operations
 /// Handles file picking and server communication
 class DocumentRemoteDataSource {
-  const DocumentRemoteDataSource();
+  final DioClient _dioClient;
+
+  DocumentRemoteDataSource({DioClient? dioClient})
+    : _dioClient = dioClient ?? DioClient();
 
   /// Pick a PDF file from device storage
   /// Returns null if user cancels
@@ -25,29 +29,63 @@ class DocumentRemoteDataSource {
   }
 
   /// Upload document to server
-  /// TODO: Implement in Story 3.3 - Implement Document Upload API Endpoint
+  /// AC: Multipart form-data upload
   Future<Map<String, dynamic>> uploadToServer(PlatformFile file) async {
-    throw UnimplementedError('Upload will be implemented in Story 3.3');
+    if (file.bytes == null && file.path == null) {
+      throw Exception('File data not available for upload');
+    }
+
+    final multipartFile = file.bytes != null
+        ? MultipartFile.fromBytes(file.bytes!, filename: file.name)
+        : await MultipartFile.fromFile(file.path!, filename: file.name);
+
+    final formData = FormData.fromMap({'file': multipartFile});
+
+    final response = await _dioClient.post<Map<String, dynamic>>(
+      '/v1/documents/upload',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Document upload failed');
+    }
+
+    return body['data'] as Map<String, dynamic>;
   }
 
-  /// Upload text document to server (placeholder for Story 3.3)
-  /// Returns mock Document for now, will be replaced with actual API call
-  Future<Document> uploadTextDocument({
+  /// Upload text document to server
+  Future<Map<String, dynamic>> uploadTextDocument({
     required String title,
     required String content,
   }) async {
-    // TODO (Story 3.3): Implement actual API call to POST /api/v1/documents/text
-    // For now, simulate success with delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    return Document(
-      id: 'text_${DateTime.now().millisecondsSinceEpoch}',
-      title: title,
-      fileName: '$title.txt',
-      fileSize: content.length,
-      status: DocumentStatus.processing,
-      createdAt: DateTime.now(),
+    final response = await _dioClient.post<Map<String, dynamic>>(
+      '/v1/documents/text',
+      data: {'title': title, 'content': content},
     );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Text document upload failed');
+    }
+
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  /// Fetch document processing status from server
+  Future<DocumentStatusModel> fetchDocumentStatus(String documentId) async {
+    final response = await _dioClient.get<Map<String, dynamic>>(
+      '/v1/documents/$documentId/status',
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Invalid document status response');
+    }
+
+    final data = body['data'] as Map<String, dynamic>;
+    return DocumentStatusModel.fromJson(data);
   }
 
   /// Fetch documents from server

@@ -329,4 +329,62 @@ describe("DocumentService", () => {
       ).resolves.toBeDefined();
     });
   });
+
+  describe("getDocumentStatus", () => {
+    test("should return status for matching user", async () => {
+      mockDocRef.get.mockResolvedValue({
+        data: () => ({
+          id: "doc123",
+          userId: "user123",
+          status: "processing",
+          updatedAt: { toDate: () => new Date("2026-01-25T10:00:00Z") },
+        }),
+      });
+
+      const result = await service.getDocumentStatus("user123", "doc123");
+
+      expect(result.documentId).toBe("doc123");
+      expect(result.status).toBe("processing");
+      expect(result.updatedAt).toBe("2026-01-25T10:00:00.000Z");
+      expect(result.errorMessage).toBeUndefined();
+    });
+
+    test("should throw DOCUMENT_NOT_FOUND when document missing", async () => {
+      mockDocRef.get.mockResolvedValue({
+        data: () => undefined,
+      });
+
+      await expect(
+        service.getDocumentStatus("user123", "missing-doc"),
+      ).rejects.toThrow(AppError);
+
+      try {
+        await service.getDocumentStatus("user123", "missing-doc");
+      } catch (error) {
+        expect((error as AppError).code).toBe("DOCUMENT_NOT_FOUND");
+        expect((error as AppError).statusCode).toBe(404);
+      }
+    });
+
+    test("should throw DOCUMENT_NOT_FOUND when user mismatch", async () => {
+      mockDocRef.get.mockResolvedValue({
+        data: () => ({
+          id: "doc123",
+          userId: "other-user",
+          status: "ready",
+          updatedAt: { toDate: () => new Date("2026-01-25T10:00:00Z") },
+        }),
+      });
+
+      await expect(
+        service.getDocumentStatus("user123", "doc123"),
+      ).rejects.toThrow(AppError);
+
+      try {
+        await service.getDocumentStatus("user123", "doc123");
+      } catch (error) {
+        expect((error as AppError).code).toBe("DOCUMENT_NOT_FOUND");
+      }
+    });
+  });
 });

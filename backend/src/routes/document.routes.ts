@@ -26,4 +26,11 @@ router.post(
  */
 router.post("/text", documentController.createTextDocument);
 
+/**
+ * GET /api/v1/documents/:documentId/status
+ * Get document processing status
+ * AC2: Status endpoint with user isolation
+ */
+router.get("/:documentId/status", documentController.getDocumentStatus);
+
 export { router as documentRoutes };
