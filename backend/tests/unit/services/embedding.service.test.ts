@@ -6,6 +6,9 @@
 // Mock dependencies with proper typing
 jest.mock("firebase-admin/firestore");
 jest.mock("../../../src/config/storage");
+jest.mock("../../../src/config/llm", () => ({
+  createEmbeddingModel: jest.fn(),
+}));
 jest.mock("pdf-parse", () => ({
   PDFParse: jest.fn().mockImplementation(() => ({
     getText: jest.fn(),
@@ -22,6 +25,8 @@ import {
   afterEach,
 } from "@jest/globals";
 import { EmbeddingService } from "../../../src/services/embedding.service";
+import { ProcessingError, ValidationError } from "../../../src/types/api.types";
+import { createEmbeddingModel } from "../../../src/config/llm";
 
 describe("EmbeddingService - PDF Text Extraction", () => {
   let service: EmbeddingService;
@@ -680,5 +685,81 @@ describe("Story 3.5: Text Chunking Service", () => {
       );
       expect(result.chunks.length).toBeGreaterThanOrEqual(0);
     });
+  });
+});
+
+describe("Story 3.6: Embedding Generation Service", () => {
+  let service: EmbeddingService;
+  let mockEmbedDocuments: jest.Mock<any>;
+
+  const buildChunk = (index: number) => ({
+    text: `Chunk ${index}`,
+    metadata: {
+      pageNumber: 1,
+      chunkIndex: index,
+      textPreview: `Chunk ${index}`,
+    },
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockEmbedDocuments = jest.fn();
+    (createEmbeddingModel as jest.Mock).mockReturnValue({
+      embedDocuments: mockEmbedDocuments,
+    });
+    service = new EmbeddingService();
+  });
+
+  it("should generate embeddings in 3 batches with 768-dim vectors", async () => {
+    const chunks = Array.from({ length: 205 }, (_, index) => buildChunk(index));
+    const mockVector = new Array(768).fill(0.1);
+
+    mockEmbedDocuments.mockImplementation(async (texts: string[]) =>
+      texts.map(() => mockVector),
+    );
+
+    const results = await service.generateEmbeddings(chunks);
+
+    expect(results).toHaveLength(205);
+    expect(results[0].vector).toHaveLength(768);
+    expect(results[0].metadata.chunkIndex).toBe(0);
+    expect(results[204].metadata.chunkIndex).toBe(204);
+    expect(mockEmbedDocuments).toHaveBeenCalledTimes(3);
+  });
+
+  it("should retry a failed batch and succeed on third attempt", async () => {
+    const chunks = Array.from({ length: 3 }, (_, index) => buildChunk(index));
+    const mockVector = new Array(768).fill(0.2);
+
+    mockEmbedDocuments
+      .mockRejectedValueOnce(new Error("rate limit"))
+      .mockRejectedValueOnce(new Error("rate limit"))
+      .mockResolvedValueOnce(chunks.map(() => mockVector));
+
+    const results = await service.generateEmbeddings(chunks);
+
+    expect(results).toHaveLength(3);
+    expect(mockEmbedDocuments).toHaveBeenCalledTimes(3);
+  });
+
+  it("should throw ProcessingError when retries are exhausted", async () => {
+    const chunks = Array.from({ length: 2 }, (_, index) => buildChunk(index));
+
+    mockEmbedDocuments.mockRejectedValue(new Error("provider failure"));
+
+    await expect(service.generateEmbeddings(chunks)).rejects.toThrow(
+      ProcessingError,
+    );
+  });
+
+  it("should throw ValidationError when vector dimensions mismatch", async () => {
+    const chunks = Array.from({ length: 1 }, (_, index) => buildChunk(index));
+    const badVector = new Array(767).fill(0.1);
+
+    mockEmbedDocuments.mockResolvedValue([badVector]);
+
+    await expect(service.generateEmbeddings(chunks)).rejects.toThrow(
+      ValidationError,
+    );
   });
 });

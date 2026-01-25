@@ -7,6 +7,8 @@ import {
 import { validatePDFContent, validateTextDocument } from "../utils/validation";
 import { AppError } from "../types/api.types";
 import type { Document, CreateDocumentDTO } from "../types/document.types";
+import type { EmbeddingInputChunk } from "../types/embedding.types";
+import { logger } from "../utils/logger";
 import { EmbeddingService } from "./embedding.service";
 
 /**
@@ -65,7 +67,18 @@ export class DocumentService {
 
       // Return document with actual timestamp
       const created = await docRef.get();
-      return created.data() as Document;
+      const document = created.data() as Document;
+
+      // Trigger background processing pipeline (Story 3.6)
+      this.triggerTextExtraction(documentId).catch((error) => {
+        logger.error("Background processing failed for uploaded document", {
+          documentId,
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+      return document;
     } catch (error) {
       // AC8: Cleanup on error - remove partial data
       await deleteFromStorage(storagePath);
@@ -126,7 +139,18 @@ export class DocumentService {
 
     // Return document with actual timestamp
     const created = await docRef.get();
-    return created.data() as Document;
+    const document = created.data() as Document;
+
+    // Trigger background processing pipeline (Story 3.6)
+    this.triggerTextExtraction(documentId).catch((error) => {
+      logger.error("Background processing failed for text document", {
+        documentId,
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+
+    return document;
   }
 
   /**
@@ -137,10 +161,74 @@ export class DocumentService {
    */
   private async triggerTextExtraction(documentId: string): Promise<void> {
     try {
-      await this.embeddingService.extractTextFromDocument(documentId);
+      const extractedText =
+        await this.embeddingService.extractTextFromDocument(documentId);
+
+      const docSnap = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+      if (!docSnap.exists) {
+        throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
+      }
+
+      const document = docSnap.data();
+      if (!document?.userId) {
+        throw new AppError("INVALID_DOCUMENT", "Document userId missing", 400);
+      }
+
+      const chunkedDocument = await this.embeddingService.chunkDocumentText(
+        extractedText,
+        documentId,
+        document.userId,
+      );
+
+      const embeddingInputs: EmbeddingInputChunk[] = chunkedDocument.chunks.map(
+        (chunk) => ({
+          text: chunk.text,
+          metadata: {
+            pageNumber: chunk.pageNumber,
+            chunkIndex: chunk.chunkIndex,
+            textPreview: chunk.textPreview,
+          },
+        }),
+      );
+
+      const embeddings =
+        await this.embeddingService.generateEmbeddings(embeddingInputs);
+
+      logger.info("Embeddings generated for document", {
+        documentId,
+        userId: document.userId,
+        chunkCount: embeddings.length,
+      });
     } catch (error) {
-      console.error(`Text extraction failed for ${documentId}:`, error);
-      // Error handling is done within the embedding service
+      logger.error("Document processing failed", {
+        documentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      try {
+        await this.db
+          .collection("documents")
+          .doc(documentId)
+          .update({
+            status: "error",
+            errorMessage:
+              error instanceof Error
+                ? error.message
+                : "Document processing failed",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+      } catch (updateError) {
+        logger.error("Failed to update document status", {
+          documentId,
+          error:
+            updateError instanceof Error
+              ? updateError.message
+              : String(updateError),
+        });
+      }
     }
   }
 }
