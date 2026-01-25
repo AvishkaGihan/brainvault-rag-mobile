@@ -112,10 +112,10 @@ describe("EmbeddingService - PDF Text Extraction", () => {
       expect(result.pages[0].pageNumber).toBe(1);
       expect(result.pages[0].text).toBe("Complete PDF text content");
 
-      // Verify document status updated to ready
+      // Verify document status updated to processing
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: "ready",
+          status: "processing",
           pageCount: 1,
           textPreview: "Complete PDF text content",
         }),
@@ -170,7 +170,7 @@ describe("EmbeddingService - PDF Text Extraction", () => {
       // Verify document status updated
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: "ready",
+          status: "processing",
           pageCount: 1,
           textPreview: "This is a text document with some content.",
         }),

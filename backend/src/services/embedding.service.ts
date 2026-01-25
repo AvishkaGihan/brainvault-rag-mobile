@@ -106,7 +106,7 @@ export class EmbeddingService {
 
       // Update document status and metadata
       await docRef.update({
-        status: "ready",
+        status: "processing",
         pageCount: extractedText.pageCount,
         extractedAt: FieldValue.serverTimestamp(),
         extractionDuration,

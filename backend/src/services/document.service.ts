@@ -5,11 +5,12 @@ import {
   deleteFromStorage,
 } from "../config/storage";
 import { validatePDFContent, validateTextDocument } from "../utils/validation";
-import { AppError } from "../types/api.types";
+import { AppError, ValidationError } from "../types/api.types";
 import type { Document, CreateDocumentDTO } from "../types/document.types";
 import type { EmbeddingInputChunk } from "../types/embedding.types";
 import { logger } from "../utils/logger";
 import { EmbeddingService } from "./embedding.service";
+import { VectorService } from "./vector.service";
 
 /**
  * Document Service
@@ -19,6 +20,7 @@ import { EmbeddingService } from "./embedding.service";
 export class DocumentService {
   private db = getFirestore();
   private embeddingService = new EmbeddingService();
+  private vectorService = new VectorService();
 
   /**
    * Upload PDF document to Storage and create Firestore record
@@ -87,7 +89,12 @@ export class DocumentService {
       try {
         await docRef.delete();
       } catch (deleteError) {
-        console.error("Failed to cleanup Firestore document", deleteError);
+        logger.error("Failed to cleanup Firestore document", {
+          originalError:
+            deleteError instanceof Error
+              ? deleteError.message
+              : String(deleteError),
+        });
       }
 
       throw new AppError(
@@ -183,6 +190,12 @@ export class DocumentService {
         document.userId,
       );
 
+      await this.persistChunks(
+        documentId,
+        document.userId,
+        chunkedDocument.chunks,
+      );
+
       const embeddingInputs: EmbeddingInputChunk[] = chunkedDocument.chunks.map(
         (chunk) => ({
           text: chunk.text,
@@ -196,6 +209,31 @@ export class DocumentService {
 
       const embeddings =
         await this.embeddingService.generateEmbeddings(embeddingInputs);
+
+      // Validate embedding count matches chunk count before indexing
+      if (embeddings.length !== chunkedDocument.chunks.length) {
+        throw new ValidationError(
+          "Embedding count mismatch: vectorCount would not match chunk count",
+          {
+            documentId,
+            chunkCount: chunkedDocument.chunks.length,
+            embeddingCount: embeddings.length,
+          },
+        );
+      }
+
+      await this.vectorService.upsertDocumentEmbeddings({
+        userId: document.userId,
+        documentId,
+        embeddings,
+      });
+
+      await this.db.collection("documents").doc(documentId).update({
+        status: "ready",
+        vectorCount: embeddings.length,
+        indexedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
       logger.info("Embeddings generated for document", {
         documentId,
@@ -217,18 +255,81 @@ export class DocumentService {
             errorMessage:
               error instanceof Error
                 ? error.message
-                : "Document processing failed",
+                : "Document processing failed. Please try again later.",
             updatedAt: FieldValue.serverTimestamp(),
           });
       } catch (updateError) {
-        logger.error("Failed to update document status", {
+        logger.error("Failed to update document error status", {
           documentId,
-          error:
+          originalError: error instanceof Error ? error.message : String(error),
+          statusUpdateError:
             updateError instanceof Error
               ? updateError.message
               : String(updateError),
         });
       }
     }
+  }
+
+  private async persistChunks(
+    documentId: string,
+    userId: string,
+    chunks: {
+      text: string;
+      pageNumber: number;
+      chunkIndex: number;
+      textPreview: string;
+    }[],
+  ): Promise<void> {
+    if (!chunks || chunks.length === 0) {
+      throw new ValidationError("No chunks available for persistence", {
+        documentId,
+      });
+    }
+
+    const batches = this.chunkIntoBatches(chunks, 500);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      const writeBatch = this.db.batch();
+
+      for (const chunk of batch) {
+        const chunkRef = this.db
+          .collection("documents")
+          .doc(documentId)
+          .collection("chunks")
+          .doc(String(chunk.chunkIndex));
+
+        writeBatch.set(chunkRef, {
+          userId,
+          documentId,
+          chunkIndex: chunk.chunkIndex,
+          pageNumber: chunk.pageNumber,
+          text: chunk.text,
+          textPreview:
+            chunk.textPreview.length > 200
+              ? chunk.textPreview.substring(0, 200)
+              : chunk.textPreview,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      await writeBatch.commit();
+
+      logger.info("Document chunks persisted", {
+        userId,
+        documentId,
+        batchIndex,
+        batchSize: batch.length,
+      });
+    }
+  }
+
+  private chunkIntoBatches<T>(items: T[], size: number): T[][] {
+    const batches: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      batches.push(items.slice(i, i + size));
+    }
+    return batches;
   }
 }
