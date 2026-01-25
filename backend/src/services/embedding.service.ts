@@ -1,18 +1,22 @@
 /**
  * Embedding Service
- * Handles text extraction from PDF documents and text documents
- * STORY 3.4: Implement PDF Text Extraction
+ * Handles text extraction and chunking for RAG pipeline
+ * STORY 3.4: Implement PDF Text Extraction ✓
+ * STORY 3.5: Implement Text Chunking Service ✓
  *
  * Architecture:
  * - PDF files: Extract text with page boundaries using pdf-parse
  * - Text documents: Process directly with single page
+ * - Semantic chunking: LangChain RecursiveCharacterTextSplitter
  * - Updates Firestore document records with extraction results
  */
 
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorageInstance } from "../config/storage";
 import { AppError } from "../types/api.types";
+import { ChunkedDocument, TextChunk } from "../types/document.types";
 import { PDFParse } from "pdf-parse";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 /**
  * Extracted text structure with page boundaries preserved
@@ -95,11 +99,115 @@ export class EmbeddingService {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
+      // Story 3.5 Integration Point - Trigger chunking for next pipeline step
+      try {
+        const chunkedDocument = await this.chunkDocumentText(
+          extractedText,
+          documentId,
+          document.userId,
+        );
+        // Store chunked data for Story 3.6 (Embedding Generation)
+        // For now, just log successful chunking - Story 3.6 will consume this
+        console.log(
+          `Document ${documentId} chunked: ${chunkedDocument.chunks.length} chunks created`,
+        );
+      } catch (chunkingError) {
+        // Log chunking error but don't fail extraction
+        console.error(
+          `Chunking failed for document ${documentId}:`,
+          chunkingError,
+        );
+        // Could optionally update document status to indicate chunking issue
+      }
+
       return extractedText;
     } catch (error) {
       // Handle extraction failures
       await this.handleExtractionError(documentId, error as Error);
       throw error;
+    }
+  }
+
+  /**
+   * Chunk extracted text into semantic chunks for embedding
+   * Story 3.5: Text chunking with metadata preservation
+   *
+   * @param extractedText - Text extracted from document (from Story 3.4)
+   * @param documentId - Document ID for reference
+   * @param userId - User ID for metadata
+   * @returns Chunked document with metadata
+   */
+  async chunkDocumentText(
+    extractedText: ExtractedText,
+    documentId: string,
+    userId: string,
+  ): Promise<ChunkedDocument> {
+    try {
+      // Validate inputs
+      if (!extractedText?.pages?.length) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "No text pages provided for chunking",
+          400,
+        );
+      }
+
+      // 1. Initialize LangChain splitter with exact architecture config
+      const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 1000,
+        chunkOverlap: 200,
+        separators: ["\n\n", "\n", ". ", " ", ""],
+      });
+
+      // 2. Process each page separately to maintain page boundaries
+      const allChunks: TextChunk[] = [];
+      let globalChunkIndex = 0;
+
+      for (const page of extractedText.pages) {
+        // 3. Split page text into chunks
+        const pageChunks = await splitter.splitText(page.text);
+
+        // 4. Create TextChunk objects with metadata
+        for (const chunkText of pageChunks) {
+          // AC4: Filter empty/whitespace chunks
+          if (chunkText.trim().length === 0) {
+            continue;
+          }
+
+          // AC2: Preserve metadata
+          allChunks.push({
+            text: chunkText,
+            pageNumber: page.pageNumber, // AC3: Assign to source page
+            chunkIndex: globalChunkIndex,
+            textPreview: chunkText.substring(0, 200),
+          });
+
+          globalChunkIndex++;
+        }
+      }
+
+      // 5. Return structured result
+      return {
+        documentId,
+        userId,
+        chunks: allChunks,
+      };
+    } catch (error) {
+      // Handle chunking failures
+      console.error(`Text chunking failed for document ${documentId}:`, error);
+
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError(
+        "INTERNAL_SERVER_ERROR",
+        "Unable to chunk document text",
+        500,
+        {
+          originalError: error instanceof Error ? error.message : String(error),
+        },
+      );
     }
   }
 

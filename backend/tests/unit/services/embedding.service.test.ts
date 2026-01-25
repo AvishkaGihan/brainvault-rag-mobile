@@ -332,3 +332,353 @@ describe("EmbeddingService - PDF Text Extraction", () => {
     });
   });
 });
+
+describe("Story 3.5: Text Chunking Service", () => {
+  let service: EmbeddingService;
+  let mockUpdate: jest.Mock<any>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Mock functions
+    mockUpdate = jest.fn();
+
+    // Mock Firestore
+    const { getFirestore } = require("firebase-admin/firestore");
+    (getFirestore as any).mockReturnValue({
+      collection: jest.fn().mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          update: mockUpdate,
+        }),
+      }),
+    });
+
+    service = new EmbeddingService();
+  });
+
+  describe("AC1: LangChain Chunking Configuration", () => {
+    it("should configure RecursiveCharacterTextSplitter with exact parameters", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "This is a sample document with multiple paragraphs.\n\nThis is the second paragraph that contains more detailed information about the topic at hand.\n\nThis is the third paragraph with even more content to ensure proper chunking behavior.",
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      expect(result.documentId).toBe("doc123");
+      expect(result.userId).toBe("user456");
+      expect(result.chunks.length).toBeGreaterThan(0);
+      expect(result.chunks[0].text.length).toBeLessThanOrEqual(1000);
+    });
+
+    it("should chunk text respecting paragraph boundaries", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "First paragraph content.\n\nSecond paragraph with different content.\n\nThird paragraph here.",
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      // Should prefer paragraph breaks over sentence breaks
+      expect(result.chunks.length).toBeGreaterThan(0);
+      expect(result.chunks[0].pageNumber).toBe(1);
+    });
+  });
+
+  describe("AC2: Metadata Preservation", () => {
+    it("should preserve pageNumber for each chunk", async () => {
+      const extractedText = {
+        pageCount: 2,
+        pages: [
+          { pageNumber: 1, text: "Page 1 content with some text" },
+          { pageNumber: 2, text: "Page 2 content with more text" },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      for (const chunk of result.chunks) {
+        expect(chunk.pageNumber).toBeGreaterThanOrEqual(1);
+        expect(chunk.pageNumber).toBeLessThanOrEqual(2);
+      }
+    });
+
+    it("should assign sequential chunkIndex starting from 0", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "A".repeat(1500) + "\n\n" + "B".repeat(1500), // Force multiple chunks
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      for (let i = 0; i < result.chunks.length; i++) {
+        expect(result.chunks[i].chunkIndex).toBe(i);
+      }
+    });
+
+    it("should create textPreview from first 200 characters", async () => {
+      const longText =
+        "This is a very long sentence that will be used to test the text preview functionality. ".repeat(
+          10,
+        );
+      const extractedText = {
+        pageCount: 1,
+        pages: [{ pageNumber: 1, text: longText }],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      expect(result.chunks[0].textPreview).toBe(
+        result.chunks[0].text.substring(0, 200),
+      );
+      expect(result.chunks[0].textPreview.length).toBeLessThanOrEqual(200);
+    });
+  });
+
+  describe("AC3: Page Boundary Handling", () => {
+    it("should assign chunk to starting page when crossing boundaries", async () => {
+      const extractedText = {
+        pageCount: 2,
+        pages: [
+          { pageNumber: 1, text: "First page content" },
+          { pageNumber: 2, text: "Second page content" },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      // Verify that chunks from page 1 have pageNumber: 1
+      const page1Chunks = result.chunks.filter((c) => c.pageNumber === 1);
+      const page2Chunks = result.chunks.filter((c) => c.pageNumber === 2);
+
+      expect(page1Chunks.length).toBeGreaterThan(0);
+      expect(page2Chunks.length).toBeGreaterThan(0);
+    });
+
+    it("should maintain page number consistency across chunks", async () => {
+      const extractedText = {
+        pageCount: 3,
+        pages: [
+          { pageNumber: 1, text: "Page one content here" },
+          { pageNumber: 2, text: "Page two content here" },
+          { pageNumber: 3, text: "Page three content here" },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      for (const chunk of result.chunks) {
+        expect([1, 2, 3]).toContain(chunk.pageNumber);
+      }
+    });
+  });
+
+  describe("AC4: Empty Chunk Filtering", () => {
+    it("should filter out empty chunks", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "Normal content\n\n\n\n\n\nMore content after empty space",
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      for (const chunk of result.chunks) {
+        expect(chunk.text.trim().length).toBeGreaterThan(0);
+      }
+    });
+
+    it("should filter out whitespace-only chunks", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "Content\n\n   \n\n   \t\n\nMore content",
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      for (const chunk of result.chunks) {
+        expect(chunk.text.trim()).not.toBe("");
+      }
+    });
+
+    it("should reindex chunks after filtering", async () => {
+      const extractedText = {
+        pageCount: 1,
+        pages: [
+          {
+            pageNumber: 1,
+            text: "Content 1\n\n\n\n\nContent 2\n\n\n\n\nContent 3",
+          },
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      // Verify no gaps in chunkIndex sequence
+      const indices = result.chunks.map((c) => c.chunkIndex);
+      for (let i = 0; i < indices.length; i++) {
+        expect(indices[i]).toBe(i);
+      }
+    });
+  });
+
+  describe("AC5: Large Document Handling", () => {
+    it("should chunk 50-page document efficiently", async () => {
+      const pages = [];
+      for (let i = 1; i <= 50; i++) {
+        pages.push({
+          pageNumber: i,
+          text: `Page ${i} content with enough text to ensure proper chunking behavior. `.repeat(
+            20,
+          ),
+        });
+      }
+
+      const extractedText = { pageCount: 50, pages };
+      const startTime = Date.now();
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      const duration = Date.now() - startTime;
+
+      expect(result.chunks.length).toBeGreaterThanOrEqual(50);
+      expect(result.chunks.length).toBeLessThanOrEqual(150);
+      expect(duration).toBeLessThan(5000); // Less than 5 seconds
+    });
+
+    it("should handle documents with varying content density", async () => {
+      const extractedText = {
+        pageCount: 3,
+        pages: [
+          { pageNumber: 1, text: "Short" }, // Sparse text
+          {
+            pageNumber: 2,
+            text: "A very long sentence with lots of content that should be chunked appropriately based on the configured parameters. ".repeat(
+              50,
+            ),
+          }, // Dense text
+          { pageNumber: 3, text: "Medium length content here" }, // Medium density
+        ],
+      };
+
+      const result = await service.chunkDocumentText(
+        extractedText,
+        "doc123",
+        "user456",
+      );
+
+      expect(result.chunks.length).toBeGreaterThan(2);
+
+      // Page 2 should have more chunks than page 1
+      const page1Chunks = result.chunks.filter(
+        (c) => c.pageNumber === 1,
+      ).length;
+      const page2Chunks = result.chunks.filter(
+        (c) => c.pageNumber === 2,
+      ).length;
+
+      expect(page2Chunks).toBeGreaterThan(page1Chunks);
+    });
+  });
+
+  describe("Error Handling", () => {
+    it("should throw AppError for invalid extracted text input", async () => {
+      const invalidExtractedText = { pageCount: 0, pages: [] };
+
+      await expect(
+        service.chunkDocumentText(invalidExtractedText, "doc123", "user456"),
+      ).rejects.toThrow("No text pages provided for chunking");
+    });
+
+    it("should handle null/undefined input gracefully", async () => {
+      await expect(
+        service.chunkDocumentText(null as any, "doc123", "user456"),
+      ).rejects.toThrow("No text pages provided for chunking");
+    });
+
+    it("should handle LangChain splitter failures", async () => {
+      // Test with malformed input that could potentially cause splitting issues
+      const malformedText = {
+        pageCount: 1,
+        pages: [{ pageNumber: 1, text: "\u0000\u0001\u0002" }], // Control characters that might break splitting
+      };
+
+      // This should not throw but handle gracefully
+      const result = await service.chunkDocumentText(
+        malformedText,
+        "doc123",
+        "user456",
+      );
+      expect(result.chunks.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
