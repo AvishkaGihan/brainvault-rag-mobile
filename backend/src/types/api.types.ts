@@ -17,6 +17,7 @@ export const ERROR_CODES = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   CONFIGURATION_ERROR: "CONFIGURATION_ERROR",
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  PROCESSING_FAILED: "PROCESSING_FAILED",
   INVALID_FILE_TYPE: "INVALID_FILE_TYPE",
   NO_FILE_PROVIDED: "NO_FILE_PROVIDED",
   INVALID_PDF_FILE: "INVALID_PDF_FILE",
@@ -94,5 +95,35 @@ export class AppError extends Error {
         details: this.details,
       },
     };
+  }
+}
+
+/**
+ * ValidationError - invalid input or data shape
+ */
+export class ValidationError extends AppError {
+  constructor(message: string, details: Record<string, unknown> = {}) {
+    super(ERROR_CODES.VALIDATION_ERROR, message, 400, details);
+    this.name = "ValidationError";
+  }
+}
+
+/**
+ * ProcessingError - failures during pipeline processing
+ */
+export class ProcessingError extends AppError {
+  constructor(message: string, details: Record<string, unknown> = {}) {
+    super(ERROR_CODES.PROCESSING_FAILED, message, 500, details);
+    this.name = "ProcessingError";
+  }
+}
+
+/**
+ * RateLimitError - upstream provider rate limiting
+ */
+export class RateLimitError extends AppError {
+  constructor(message: string, details: Record<string, unknown> = {}) {
+    super(ERROR_CODES.RATE_LIMIT_EXCEEDED, message, 429, details);
+    this.name = "RateLimitError";
   }
 }

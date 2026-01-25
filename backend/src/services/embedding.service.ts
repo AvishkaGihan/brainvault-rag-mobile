@@ -12,11 +12,22 @@
  */
 
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { getStorageInstance } from "../config/storage";
-import { AppError } from "../types/api.types";
-import { ChunkedDocument, TextChunk } from "../types/document.types";
-import { PDFParse } from "pdf-parse";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { PDFParse } from "pdf-parse";
+import { createEmbeddingModel } from "../config/llm";
+import { getStorageInstance } from "../config/storage";
+import {
+  AppError,
+  ProcessingError,
+  RateLimitError,
+  ValidationError,
+} from "../types/api.types";
+import type { ChunkedDocument, TextChunk } from "../types/document.types";
+import type {
+  EmbeddingInputChunk,
+  EmbeddingResult,
+} from "../types/embedding.types";
+import { logger } from "../utils/logger";
 
 /**
  * Extracted text structure with page boundaries preserved
@@ -36,6 +47,10 @@ export interface ExtractedText {
  */
 export class EmbeddingService {
   private db = getFirestore();
+  private readonly embeddingBatchSize = 100;
+  private readonly embeddingDimensions = 768;
+  private readonly maxEmbeddingRetries = 3;
+  private readonly baseBackoffMs = 500;
 
   /**
    * Extract text from document (PDF or text-only)
@@ -98,27 +113,6 @@ export class EmbeddingService {
         textPreview,
         updatedAt: FieldValue.serverTimestamp(),
       });
-
-      // Story 3.5 Integration Point - Trigger chunking for next pipeline step
-      try {
-        const chunkedDocument = await this.chunkDocumentText(
-          extractedText,
-          documentId,
-          document.userId,
-        );
-        // Store chunked data for Story 3.6 (Embedding Generation)
-        // For now, just log successful chunking - Story 3.6 will consume this
-        console.log(
-          `Document ${documentId} chunked: ${chunkedDocument.chunks.length} chunks created`,
-        );
-      } catch (chunkingError) {
-        // Log chunking error but don't fail extraction
-        console.error(
-          `Chunking failed for document ${documentId}:`,
-          chunkingError,
-        );
-        // Could optionally update document status to indicate chunking issue
-      }
 
       return extractedText;
     } catch (error) {
@@ -194,7 +188,10 @@ export class EmbeddingService {
       };
     } catch (error) {
       // Handle chunking failures
-      console.error(`Text chunking failed for document ${documentId}:`, error);
+      logger.error("Text chunking failed for document", {
+        documentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       if (error instanceof AppError) {
         throw error;
@@ -209,6 +206,181 @@ export class EmbeddingService {
         },
       );
     }
+  }
+
+  /**
+   * Generate embeddings for chunked text with batching + retries
+   * Story 3.6: Embedding Generation Service
+   */
+  async generateEmbeddings(
+    chunks: EmbeddingInputChunk[],
+  ): Promise<EmbeddingResult[]> {
+    if (!chunks || chunks.length === 0) {
+      throw new ValidationError("No chunks provided for embedding generation", {
+        chunkCount: chunks?.length ?? 0,
+      });
+    }
+
+    const startTime = Date.now();
+    const embeddingModel = createEmbeddingModel();
+    const batches = this.chunkIntoBatches(chunks, this.embeddingBatchSize);
+
+    const settledResults = await Promise.allSettled(
+      batches.map((batch, batchIndex) =>
+        this.processBatchWithRetry(embeddingModel, batch, batchIndex),
+      ),
+    );
+
+    const failedBatches = settledResults
+      .map((result, index) => ({ result, index }))
+      .filter((item) => item.result.status === "rejected")
+      .map((item) => ({
+        batchIndex: item.index,
+        error: (item.result as PromiseRejectedResult).reason,
+      }));
+
+    if (failedBatches.length > 0) {
+      const firstTypedError = failedBatches.find(
+        (batch) => batch.error instanceof AppError,
+      )?.error as AppError | undefined;
+
+      if (firstTypedError) {
+        throw firstTypedError;
+      }
+
+      throw new ProcessingError("Embedding generation failed", {
+        failedBatchCount: failedBatches.length,
+        failedBatches: failedBatches.map((batch) => ({
+          batchIndex: batch.batchIndex,
+          error:
+            batch.error instanceof Error ? batch.error.message : batch.error,
+        })),
+      });
+    }
+
+    const embeddings = settledResults.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    );
+
+    logger.info("Embedding generation completed", {
+      batchCount: batches.length,
+      totalChunks: chunks.length,
+      totalDurationMs: Date.now() - startTime,
+    });
+
+    return embeddings;
+  }
+
+  private async processBatchWithRetry(
+    embeddingModel: {
+      embedDocuments: (texts: string[]) => Promise<number[][]>;
+    },
+    batch: EmbeddingInputChunk[],
+    batchIndex: number,
+  ): Promise<EmbeddingResult[]> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= this.maxEmbeddingRetries; attempt++) {
+      const batchStart = Date.now();
+      try {
+        const texts = batch.map((chunk) => chunk.text);
+        const vectors = await embeddingModel.embedDocuments(texts);
+
+        if (vectors.length !== batch.length) {
+          throw new ValidationError("Embedding batch size mismatch", {
+            batchIndex,
+            expected: batch.length,
+            received: vectors.length,
+          });
+        }
+
+        const results = vectors.map((vector, index) => {
+          if (vector.length !== this.embeddingDimensions) {
+            throw new ValidationError("Embedding dimension mismatch", {
+              batchIndex,
+              chunkIndex: batch[index]?.metadata.chunkIndex,
+              expected: this.embeddingDimensions,
+              received: vector.length,
+            });
+          }
+
+          return {
+            vector,
+            metadata: batch[index].metadata,
+          } as EmbeddingResult;
+        });
+
+        logger.info("Embedding batch completed", {
+          batchIndex,
+          batchSize: batch.length,
+          attempt,
+          durationMs: Date.now() - batchStart,
+        });
+
+        return results;
+      } catch (error) {
+        lastError = error;
+
+        if (error instanceof ValidationError) {
+          throw error;
+        }
+
+        if (attempt < this.maxEmbeddingRetries) {
+          const delayMs = this.calculateBackoff(attempt);
+          logger.warn("Embedding batch failed, retrying", {
+            batchIndex,
+            attempt,
+            delayMs,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          await this.delay(delayMs);
+          continue;
+        }
+
+        if (this.isRateLimitError(error)) {
+          throw new RateLimitError("Embedding provider rate limit exceeded", {
+            batchIndex,
+            attempts: attempt,
+          });
+        }
+
+        throw new ProcessingError("Embedding batch failed", {
+          batchIndex,
+          attempts: attempt,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    throw new ProcessingError("Embedding batch failed", {
+      batchIndex,
+      attempts: this.maxEmbeddingRetries,
+      error: lastError instanceof Error ? lastError.message : String(lastError),
+    });
+  }
+
+  private chunkIntoBatches<T>(items: T[], size: number): T[][] {
+    const batches: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      batches.push(items.slice(i, i + size));
+    }
+    return batches;
+  }
+
+  private calculateBackoff(attempt: number): number {
+    const jitter = Math.floor(Math.random() * 200);
+    return this.baseBackoffMs * Math.pow(2, attempt - 1) + jitter;
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private isRateLimitError(error: unknown): boolean {
+    if (!error) return false;
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : String(error);
+    return message.includes("rate limit") || message.includes("429");
   }
 
   /**
@@ -348,16 +520,19 @@ export class EmbeddingService {
       });
 
       // Log error with document metadata for debugging
-      console.error(`[${new Date().toISOString()}] Text extraction failed:`, {
+      logger.error("Text extraction failed", {
         documentId,
         error: error.message,
         stack: error.stack,
       });
     } catch (updateError) {
-      console.error(
-        `Failed to update document status for ${documentId}:`,
-        updateError,
-      );
+      logger.error("Failed to update document status", {
+        documentId,
+        error:
+          updateError instanceof Error
+            ? updateError.message
+            : String(updateError),
+      });
     }
   }
 }

@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse, ERROR_CODES, AppError } from "../types";
 import { createErrorResponse } from "../utils/helpers";
+import { logger } from "../utils/logger";
 
 /**
  * Global error handler middleware
@@ -36,7 +37,7 @@ export function errorHandler(
   }
 
   // Log error with context
-  console.error(`[${new Date().toISOString()}] Error (${code}):`, {
+  logger.error("Request error", {
     statusCode,
     code,
     message,

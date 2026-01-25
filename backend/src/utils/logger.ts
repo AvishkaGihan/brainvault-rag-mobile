@@ -18,7 +18,7 @@ class Logger {
   private formatMessage(
     level: LogLevel,
     message: string,
-    data?: unknown
+    data?: unknown,
   ): string {
     const timestamp = new Date().toISOString();
     const baseMessage = `${this.prefix} [${timestamp}] [${level}] ${message}`;
@@ -31,7 +31,7 @@ class Logger {
 
   debug(message: string, data?: unknown): void {
     if (process.env.NODE_ENV === "development") {
-      console.debug(this.formatMessage(LOG_LEVELS.DEBUG, message, data));
+      console.log(this.formatMessage(LOG_LEVELS.DEBUG, message, data));
     }
   }
 
@@ -40,11 +40,11 @@ class Logger {
   }
 
   warn(message: string, data?: unknown): void {
-    console.warn(this.formatMessage(LOG_LEVELS.WARN, message, data));
+    console.log(this.formatMessage(LOG_LEVELS.WARN, message, data));
   }
 
   error(message: string, data?: unknown): void {
-    console.error(this.formatMessage(LOG_LEVELS.ERROR, message, data));
+    console.log(this.formatMessage(LOG_LEVELS.ERROR, message, data));
   }
 }
 
