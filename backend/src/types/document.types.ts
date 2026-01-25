@@ -69,3 +69,20 @@ export interface CreateTextDocumentRequest {
   content: string;
   source?: "paste" | "import"; // Optional metadata
 }
+
+/**
+ * Chunked text with metadata for embedding generation
+ * Used by Story 3.5 (Chunking) → Story 3.6 (Embedding)
+ */
+export interface ChunkedDocument {
+  documentId: string;
+  userId: string;
+  chunks: TextChunk[];
+}
+
+export interface TextChunk {
+  text: string; // The actual chunk text content
+  pageNumber: number; // Source page (for citation)
+  chunkIndex: number; // Sequential position (0-based)
+  textPreview: string; // First 200 chars for display
+}
