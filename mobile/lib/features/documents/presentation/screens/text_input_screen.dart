@@ -210,6 +210,7 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
             status.status == DocumentStatus.uploading ||
             status.status == DocumentStatus.uploaded ||
             status.status == DocumentStatus.pending);
+    final canCancelProcessing = isProcessing;
     final isLoading = uploadState.isLoading || statusState.isLoading;
     final isFormEnabled = !isLoading && !isProcessing;
     final showStatusCard =
@@ -358,11 +359,89 @@ class _TextInputScreenState extends ConsumerState<TextInputScreen> {
                       Navigator.of(context).pop();
                     }
                   },
+                  onCancel: canCancelProcessing
+                      ? () async {
+                          final shouldCancel = await _showCancelDialog(context);
+                          if (!shouldCancel) return;
+
+                          // Guard against widget disposal while dialog was shown
+                          if (!context.mounted) return;
+
+                          final documentId = status.documentId;
+
+                          ref
+                              .read(documentStatusProvider.notifier)
+                              .stopPolling();
+
+                          try {
+                            final cancelUseCase = ref.read(
+                              cancelDocumentProcessingUseCaseProvider,
+                            );
+                            await cancelUseCase(documentId);
+
+                            // Widget may have been disposed while awaiting cancellation
+                            if (!context.mounted) return;
+
+                            ref.read(uploadTextProvider.notifier).clear();
+                            ref.read(documentStatusProvider.notifier).clear();
+
+                            if (context.mounted) {
+                              Navigator.of(
+                                context,
+                              ).popUntil((route) => route.isFirst);
+                            }
+                          } catch (error) {
+                            if (!context.mounted) return;
+
+                            // Convert technical errors to user-friendly messages
+                            String message = 'Failed to cancel upload';
+                            if (error.toString().contains(
+                              'DOCUMENT_NOT_FOUND',
+                            )) {
+                              message = 'Document no longer exists';
+                            } else if (error.toString().contains(
+                              'CANCEL_NOT_ALLOWED',
+                            )) {
+                              message = 'Cannot cancel completed documents';
+                            } else if (error.toString().contains('timeout')) {
+                              message = 'Request timed out. Please try again.';
+                            } else if (error.toString().contains('network')) {
+                              message = 'Network error. Check your connection.';
+                            }
+
+                            _showError(message);
+                          }
+                        }
+                      : null,
                 ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _showCancelDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel upload?'),
+        content: const Text(
+          'This will stop the upload or processing and remove any partial data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cancel upload'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
   }
 }

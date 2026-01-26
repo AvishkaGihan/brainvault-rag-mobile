@@ -19,6 +19,13 @@ router.post(
 );
 
 /**
+ * POST /api/v1/documents/:documentId/cancel
+ * Cancel document upload or processing
+ * Story 3.9: Upload cancellation
+ */
+router.post("/:documentId/cancel", documentController.cancelDocument);
+
+/**
  * POST /api/v1/documents/text
  * Create text-only document
  * AC3: JSON body with title and content

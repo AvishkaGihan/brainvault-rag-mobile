@@ -144,4 +144,35 @@ export class DocumentController {
       next(error);
     }
   };
+
+  /**
+   * Handle cancel document request
+   * Story 3.9: POST /api/v1/documents/:documentId/cancel
+   */
+  cancelDocument = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const userId = req.user!.uid;
+      const { documentId } = req.params;
+
+      const result = await this.documentService.cancelDocument(
+        userId,
+        documentId,
+      );
+
+      const timestamp = getCurrentTimestamp();
+      const response: ApiResponse<typeof result> = {
+        success: true,
+        data: result,
+        meta: { timestamp },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

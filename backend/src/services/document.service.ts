@@ -1,4 +1,5 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import type { DocumentReference } from "firebase-admin/firestore";
 import {
   generateStoragePath,
   uploadToStorage,
@@ -197,6 +198,127 @@ export class DocumentService {
   }
 
   /**
+   * Cancel an in-flight document upload or processing
+   * Story 3.9: Upload cancellation
+   */
+  async cancelDocument(
+    userId: string,
+    documentId: string,
+  ): Promise<{ documentId: string; cancelled: true }> {
+    const docRef = this.db.collection("documents").doc(documentId);
+
+    const document = await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+
+      if (!snapshot.exists) {
+        throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
+      }
+
+      const data = snapshot.data() as Document | undefined;
+
+      if (!data || data.userId !== userId) {
+        throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
+      }
+
+      if (data.status === "ready") {
+        throw new AppError(
+          "CANCEL_NOT_ALLOWED",
+          "Document is already processed",
+          409,
+        );
+      }
+
+      transaction.update(docRef, {
+        cancelRequestedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return data;
+    });
+
+    let chunkIds: string[] = [];
+
+    try {
+      chunkIds = await this.fetchChunkIds(docRef, documentId);
+    } catch (error) {
+      logger.warn("Failed to load document chunks for cancellation", {
+        documentId,
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // Step 1: Delete vectors first (prevents orphaned vectors)
+    if (chunkIds.length > 0) {
+      const vectorIds = chunkIds.map((chunkId) => `${documentId}_${chunkId}`);
+
+      try {
+        await this.vectorService.deleteDocumentVectorsByIds({
+          userId,
+          ids: vectorIds,
+        });
+        logger.info("Vectors deleted successfully during cancellation", {
+          documentId,
+          userId,
+          vectorCount: vectorIds.length,
+        });
+      } catch (error) {
+        logger.warn("Pinecone vector deletion failed during cancellation", {
+          documentId,
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Continue with cleanup even if vector deletion fails
+      }
+    }
+
+    // Step 2: Delete Firestore chunks
+    try {
+      await this.deleteChunkSubcollection(docRef, documentId, chunkIds);
+      logger.info("Chunks deleted successfully during cancellation", {
+        documentId,
+        userId,
+        chunkCount: chunkIds.length,
+      });
+    } catch (error) {
+      logger.warn("Chunk deletion failed during cancellation", {
+        documentId,
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // Step 3: Delete storage object
+    if (document.storagePath) {
+      try {
+        await deleteFromStorage(document.storagePath);
+        logger.info("Storage object deleted successfully during cancellation", {
+          documentId,
+          userId,
+          storagePath: document.storagePath,
+        });
+      } catch (error) {
+        logger.warn("Storage deletion failed during cancellation", {
+          documentId,
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Step 4: Delete Firestore document last
+    await docRef.delete();
+
+    logger.info("Document cancelled and cleaned up", {
+      documentId,
+      userId,
+      chunkCount: chunkIds.length,
+    });
+
+    return { documentId, cancelled: true };
+  }
+
+  /**
    * Trigger text extraction for uploaded document (Story 3.4 integration)
    * AC1, AC3: Background processing trigger
    *
@@ -204,6 +326,26 @@ export class DocumentService {
    */
   private async triggerTextExtraction(documentId: string): Promise<void> {
     try {
+      const initialSnapshot = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+
+      if (!initialSnapshot.exists) {
+        logger.info("Skipping processing - document missing", { documentId });
+        return;
+      }
+
+      const initialDocument = initialSnapshot.data() as Document | undefined;
+
+      if (initialDocument?.cancelRequestedAt) {
+        logger.info("Skipping processing - cancellation requested", {
+          documentId,
+          userId: initialDocument.userId,
+        });
+        return;
+      }
+
       const extractedText =
         await this.embeddingService.extractTextFromDocument(documentId);
 
@@ -220,6 +362,14 @@ export class DocumentService {
         throw new AppError("INVALID_DOCUMENT", "Document userId missing", 400);
       }
 
+      if (document.cancelRequestedAt) {
+        logger.info("Stopping processing - cancellation requested", {
+          documentId,
+          userId: document.userId,
+        });
+        return;
+      }
+
       const chunkedDocument = await this.embeddingService.chunkDocumentText(
         extractedText,
         documentId,
@@ -232,6 +382,27 @@ export class DocumentService {
         chunkedDocument.chunks,
       );
 
+      const postChunkSnapshot = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+
+      if (!postChunkSnapshot.exists) {
+        logger.info("Stopping processing - document removed", { documentId });
+        return;
+      }
+
+      const postChunkDocument = postChunkSnapshot.data() as
+        | Document
+        | undefined;
+      if (postChunkDocument?.cancelRequestedAt) {
+        logger.info("Stopping processing - cancellation requested", {
+          documentId,
+          userId: postChunkDocument.userId,
+        });
+        return;
+      }
+
       const embeddingInputs: EmbeddingInputChunk[] = chunkedDocument.chunks.map(
         (chunk) => ({
           text: chunk.text,
@@ -242,6 +413,33 @@ export class DocumentService {
           },
         }),
       );
+
+      // Check for cancellation before embedding generation
+      const preEmbeddingSnapshot = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+
+      if (!preEmbeddingSnapshot.exists) {
+        logger.info("Stopping processing - document removed before embedding", {
+          documentId,
+        });
+        return;
+      }
+
+      const preEmbeddingDoc = preEmbeddingSnapshot.data() as
+        | Document
+        | undefined;
+      if (preEmbeddingDoc?.cancelRequestedAt) {
+        logger.info(
+          "Stopping processing - cancellation requested before embedding",
+          {
+            documentId,
+            userId: preEmbeddingDoc.userId,
+          },
+        );
+        return;
+      }
 
       const embeddings =
         await this.embeddingService.generateEmbeddings(embeddingInputs);
@@ -258,11 +456,52 @@ export class DocumentService {
         );
       }
 
+      // Final cancellation check before vector storage
+      const preVectorSnapshot = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+
+      if (!preVectorSnapshot.exists) {
+        logger.info(
+          "Stopping processing - document removed before vector storage",
+          {
+            documentId,
+          },
+        );
+        return;
+      }
+
+      const preVectorDoc = preVectorSnapshot.data() as Document | undefined;
+      if (preVectorDoc?.cancelRequestedAt) {
+        logger.info(
+          "Stopping processing - cancellation requested before vector storage",
+          {
+            documentId,
+            userId: preVectorDoc.userId,
+          },
+        );
+        return;
+      }
+
       await this.vectorService.upsertDocumentEmbeddings({
         userId: document.userId,
         documentId,
         embeddings,
       });
+
+      // Final check before marking as ready
+      const finalSnapshot = await this.db
+        .collection("documents")
+        .doc(documentId)
+        .get();
+
+      if (!finalSnapshot.exists || finalSnapshot.data()?.cancelRequestedAt) {
+        logger.info("Document cancelled after processing completed", {
+          documentId,
+        });
+        return;
+      }
 
       await this.db.collection("documents").doc(documentId).update({
         status: "ready",
@@ -277,6 +516,14 @@ export class DocumentService {
         chunkCount: embeddings.length,
       });
     } catch (error) {
+      if (error instanceof AppError && error.code === "DOCUMENT_NOT_FOUND") {
+        logger.info("Processing stopped - document missing", {
+          documentId,
+          error: error.message,
+        });
+        return;
+      }
+
       logger.error("Document processing failed", {
         documentId,
         error: error instanceof Error ? error.message : String(error),
@@ -354,6 +601,50 @@ export class DocumentService {
 
       logger.info("Document chunks persisted", {
         userId,
+        documentId,
+        batchIndex,
+        batchSize: batch.length,
+      });
+    }
+  }
+
+  private async fetchChunkIds(
+    docRef: DocumentReference,
+    documentId: string,
+  ): Promise<string[]> {
+    const chunksSnapshot = await docRef.collection("chunks").get();
+
+    logger.info("Fetched document chunks for cancellation", {
+      documentId,
+      chunkCount: chunksSnapshot.docs.length,
+    });
+
+    return chunksSnapshot.docs.map((doc) => doc.id);
+  }
+
+  private async deleteChunkSubcollection(
+    docRef: DocumentReference,
+    documentId: string,
+    chunkIds: string[],
+  ): Promise<void> {
+    if (!chunkIds || chunkIds.length === 0) {
+      return;
+    }
+
+    const batches = this.chunkIntoBatches(chunkIds, 500);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      const writeBatch = this.db.batch();
+
+      for (const chunkId of batch) {
+        const chunkRef = docRef.collection("chunks").doc(chunkId);
+        writeBatch.delete(chunkRef);
+      }
+
+      await writeBatch.commit();
+
+      logger.info("Deleted document chunk batch", {
         documentId,
         batchIndex,
         batchSize: batch.length,

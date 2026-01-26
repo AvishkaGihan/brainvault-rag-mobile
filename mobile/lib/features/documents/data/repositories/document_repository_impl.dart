@@ -49,9 +49,15 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }
 
   @override
-  Future<Document> uploadDocument(PlatformFile file) async {
+  Future<Document> uploadDocument(
+    PlatformFile file, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      final data = await _remoteDataSource.uploadToServer(file);
+      final data = await _remoteDataSource.uploadToServer(
+        file,
+        cancelToken: cancelToken,
+      );
       final documentJson = {
         'id': data['documentId'] ?? data['id'],
         'title': data['title'] ?? file.name.replaceAll('.pdf', ''),
@@ -164,6 +170,40 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }
 
   @override
+  Future<void> cancelDocumentProcessing(String documentId) async {
+    try {
+      await _remoteDataSource.cancelDocumentProcessing(documentId);
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      if (responseData is Map<String, dynamic>) {
+        final error = responseData['error'];
+        if (error is Map<String, dynamic>) {
+          final code = error['code'] as String?;
+          if (code == 'DOCUMENT_NOT_FOUND') {
+            throw const DocumentNotFoundFailure();
+          }
+          if (code == 'CANCEL_NOT_ALLOWED') {
+            throw const CancelNotAllowedFailure();
+          }
+        }
+      }
+
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          throw const TimeoutFailure('Request timed out');
+        case DioExceptionType.connectionError:
+          throw const ConnectionFailure();
+        default:
+          throw const ServerFailure();
+      }
+    } catch (e) {
+      throw UnknownFailure('Failed to cancel document: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<void> deleteDocument(String documentId) async {
     // TODO: Implement in Story 4.5
     // Stub: do nothing
@@ -189,6 +229,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
     }
 
     switch (error.type) {
+      case DioExceptionType.cancel:
+        return const UploadCancelledFailure();
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.sendTimeout:

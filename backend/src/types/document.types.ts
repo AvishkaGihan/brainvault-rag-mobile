@@ -21,6 +21,7 @@ export interface Document {
   storagePath?: string; // Firebase Storage path (PDF only)
   content?: string; // Text content (text documents only)
   errorMessage?: string;
+  cancelRequestedAt?: Timestamp; // Cancellation intent timestamp
   extractedAt?: Timestamp; // When extraction completed
   extractionDuration?: number; // Processing time in ms
   textPreview?: string; // First 200 chars for display

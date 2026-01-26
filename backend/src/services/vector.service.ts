@@ -28,6 +28,7 @@ interface PineconeIndex {
     vectors: VectorStorageRequest[];
     namespace?: string;
   }) => Promise<unknown>;
+  delete?: (params: { ids: string[]; namespace?: string }) => Promise<unknown>;
 }
 
 export class VectorService {
@@ -81,6 +82,66 @@ export class VectorService {
     }
 
     return { vectorCount: vectors.length };
+  }
+
+  /**
+   * Delete document vectors by explicit vector IDs
+   * Best-effort: no-op if Pinecone index is unavailable
+   * Security: Only deletes vectors within the user's namespace
+   */
+  async deleteDocumentVectorsByIds(params: {
+    userId: string;
+    ids: string[];
+  }): Promise<{ deletedCount: number }> {
+    const { userId, ids } = params;
+
+    if (!userId) {
+      throw new ValidationError("Missing userId for vector deletion", {
+        userId,
+      });
+    }
+
+    if (!ids || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    // Security validation: Ensure all vector IDs follow expected pattern
+    const invalidIds = ids.filter((id) => {
+      // Expected pattern: {documentId}_{chunkIndex}
+      const parts = id.split("_");
+      return parts.length !== 2 || !parts[0] || isNaN(parseInt(parts[1]));
+    });
+
+    if (invalidIds.length > 0) {
+      throw new ValidationError("Invalid vector ID format detected", {
+        userId,
+        invalidIds: invalidIds.slice(0, 5), // Log first 5 for debugging
+        expectedFormat: "documentId_chunkIndex",
+      });
+    }
+
+    if (!this.pineconeIndex) {
+      logger.warn("Pinecone index unavailable - skipping vector deletion", {
+        userId,
+        deleteCount: ids.length,
+      });
+      return { deletedCount: 0 };
+    }
+
+    const batches = this.chunkIntoBatches(ids, this.maxBatchSize);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      await this.deleteBatchWithRetry({ userId, batch, batchIndex });
+    }
+
+    logger.info("Vector deletion completed successfully", {
+      userId,
+      deletedCount: ids.length,
+      batchCount: batches.length,
+    });
+
+    return { deletedCount: ids.length };
   }
 
   private mapToVectors(
@@ -196,6 +257,77 @@ export class VectorService {
 
     throw new ProcessingError("Pinecone upsert failed", {
       documentId,
+      batchIndex,
+      attempts: this.maxRetries,
+      error: lastError instanceof Error ? lastError.message : String(lastError),
+    });
+  }
+
+  private async deleteBatchWithRetry(params: {
+    userId: string;
+    batch: string[];
+    batchIndex: number;
+  }): Promise<void> {
+    const { userId, batch, batchIndex } = params;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        if (!this.pineconeIndex?.delete) {
+          logger.warn("Pinecone delete API unavailable - skipping batch", {
+            userId,
+            batchIndex,
+            batchSize: batch.length,
+          });
+          return;
+        }
+
+        await this.pineconeIndex.delete({
+          ids: batch,
+          namespace: userId,
+        });
+
+        logger.info("Pinecone delete batch completed", {
+          userId,
+          batchIndex,
+          batchSize: batch.length,
+          attempt,
+        });
+
+        return;
+      } catch (error) {
+        lastError = error;
+
+        if (this.isRateLimitError(error) && attempt < this.maxRetries) {
+          const delayMs = this.calculateBackoff(attempt);
+          logger.warn("Pinecone rate limit hit, retrying delete batch", {
+            userId,
+            batchIndex,
+            batchSize: batch.length,
+            attempt,
+            delayMs,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          await this.delay(delayMs);
+          continue;
+        }
+
+        if (this.isRateLimitError(error)) {
+          throw new RateLimitError("Pinecone rate limit exceeded", {
+            batchIndex,
+            attempts: attempt,
+          });
+        }
+
+        throw new ProcessingError("Pinecone delete failed", {
+          batchIndex,
+          attempts: attempt,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    throw new ProcessingError("Pinecone delete failed", {
       batchIndex,
       attempts: this.maxRetries,
       error: lastError instanceof Error ? lastError.message : String(lastError),

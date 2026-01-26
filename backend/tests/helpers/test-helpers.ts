@@ -93,7 +93,23 @@ export function setupFirebaseMocks() {
         }
         return Promise.resolve(undefined);
       }),
+    collection: jest.fn<() => any>(),
   };
+
+  const mockChunkDocRef = {
+    id: "chunk-0",
+    delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  };
+
+  const mockChunksCollection = {
+    doc: jest.fn<(id?: string) => any>().mockImplementation((id?: string) => ({
+      ...mockChunkDocRef,
+      id: id ?? mockChunkDocRef.id,
+    })),
+    get: jest.fn<() => Promise<any>>().mockResolvedValue({ docs: [] }),
+  };
+
+  mockDocRef.collection.mockReturnValue(mockChunksCollection);
 
   const mockCollection = {
     doc: jest.fn<() => any>().mockReturnValue(mockDocRef),
@@ -101,6 +117,23 @@ export function setupFirebaseMocks() {
 
   const mockFirestore = {
     collection: jest.fn<() => any>().mockReturnValue(mockCollection),
+    batch: jest.fn<() => any>().mockImplementation(() => {
+      const operations: any[] = [];
+      return {
+        delete: jest.fn((ref: any) => operations.push(ref)),
+        commit: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        _ops: operations,
+      };
+    }),
+    runTransaction: jest
+      .fn<(fn: (tx: any) => Promise<any>) => Promise<any>>()
+      .mockImplementation(async (fn: (tx: any) => Promise<any>) => {
+        const transaction = {
+          get: jest.fn((ref: any) => ref.get()),
+          update: jest.fn((ref: any, data: any) => ref.update(data)),
+        };
+        return fn(transaction);
+      }),
   };
 
   // Mock Storage

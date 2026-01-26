@@ -9,12 +9,14 @@ class ProcessingStatusCard extends StatelessWidget {
   final AsyncValue<DocumentStatusInfo?> statusState;
   final VoidCallback onRetry;
   final VoidCallback? onDone;
+  final VoidCallback? onCancel;
 
   const ProcessingStatusCard({
     super.key,
     required this.statusState,
     required this.onRetry,
     this.onDone,
+    this.onCancel,
   });
 
   @override
@@ -45,38 +47,61 @@ class ProcessingStatusCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProcessingCard(BuildContext context) {
+  Widget _buildProcessingCard(
+    BuildContext context,
+    DocumentStatusInfo? status,
+  ) {
     final theme = Theme.of(context);
+
+    // AC #4: No cancel after completion - only allow cancel for non-ready statuses
+    final canShowCancel =
+        onCancel != null &&
+        (status == null || status.status != DocumentStatus.ready);
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           children: [
-            const SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Processing...', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    'We are preparing your document for chat.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+            Row(
+              children: [
+                const SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Processing...', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'We are preparing your document for chat.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                _StatusBadge(
+                  label: 'Processing',
+                  color: theme.colorScheme.primary,
+                ),
+              ],
             ),
-            _StatusBadge(label: 'Processing', color: theme.colorScheme.primary),
+            if (canShowCancel)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: onCancel,
+                  child: const Text('Cancel'),
+                ),
+              ),
           ],
         ),
       ),
