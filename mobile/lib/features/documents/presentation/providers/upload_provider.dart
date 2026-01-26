@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../../data/repositories/document_repository_impl.dart';
 import '../../domain/entities/document.dart';
 import '../../domain/entities/document_status.dart';
 import '../../domain/usecases/get_document_status.dart';
+import '../../domain/usecases/cancel_document_processing.dart';
 import '../../domain/usecases/upload_document.dart';
 import '../../domain/usecases/upload_pdf_document.dart';
 import '../../domain/usecases/upload_text_document.dart';
@@ -42,6 +44,13 @@ final getDocumentStatusUseCaseProvider = Provider<GetDocumentStatus>((ref) {
   final repository = ref.watch(documentRepositoryProvider);
   return GetDocumentStatus(repository);
 });
+
+/// Provider for cancel document processing use case
+final cancelDocumentProcessingUseCaseProvider =
+    Provider<CancelDocumentProcessing>((ref) {
+      final repository = ref.watch(documentRepositoryProvider);
+      return CancelDocumentProcessing(repository);
+    });
 
 /// Notifier for managing selected file state
 class FileSelectionNotifier extends AsyncNotifier<PlatformFile?> {
@@ -110,6 +119,10 @@ class UploadTextNotifier extends AsyncNotifier<Document?> {
       state = AsyncError(e, st);
     }
   }
+
+  void clear() {
+    state = const AsyncData(null);
+  }
 }
 
 /// Provider for UploadTextNotifier
@@ -121,21 +134,40 @@ final uploadTextProvider = AsyncNotifierProvider<UploadTextNotifier, Document?>(
 
 /// Notifier for managing PDF upload state
 class UploadPdfNotifier extends AsyncNotifier<Document?> {
+  CancelToken? _cancelToken;
+
   @override
   Future<Document?> build() async {
+    ref.onDispose(() {
+      _cancelToken?.cancel('disposed');
+      _cancelToken = null;
+    });
     return null;
   }
 
   Future<void> upload(PlatformFile file) async {
     state = const AsyncLoading();
+    _cancelToken = CancelToken();
 
     try {
       final useCase = ref.read(uploadPdfDocumentUseCaseProvider);
-      final document = await useCase(file);
+      final document = await useCase(file, cancelToken: _cancelToken);
       state = AsyncData(document);
+      _cancelToken = null;
+    } on UploadCancelledFailure {
+      state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
+      _cancelToken = null;
     }
+  }
+
+  void cancelUpload() {
+    if (_cancelToken != null && !_cancelToken!.isCancelled) {
+      _cancelToken?.cancel('cancelled');
+    }
+    _cancelToken = null;
+    state = const AsyncData(null);
   }
 
   void clear() {
@@ -206,6 +238,12 @@ class DocumentStatusNotifier extends AsyncNotifier<DocumentStatusInfo?> {
   }
 
   void clear() {
+    state = const AsyncData(null);
+  }
+
+  void stopPolling() {
+    _isDisposed = true;
+    _lastDocumentId = null;
     state = const AsyncData(null);
   }
 

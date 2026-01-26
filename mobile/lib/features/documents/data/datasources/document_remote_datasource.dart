@@ -30,7 +30,10 @@ class DocumentRemoteDataSource {
 
   /// Upload document to server
   /// AC: Multipart form-data upload
-  Future<Map<String, dynamic>> uploadToServer(PlatformFile file) async {
+  Future<Map<String, dynamic>> uploadToServer(
+    PlatformFile file, {
+    CancelToken? cancelToken,
+  }) async {
     if (file.bytes == null && file.path == null) {
       throw Exception('File data not available for upload');
     }
@@ -45,6 +48,7 @@ class DocumentRemoteDataSource {
       '/v1/documents/upload',
       data: formData,
       options: Options(contentType: 'multipart/form-data'),
+      cancelToken: cancelToken,
     );
 
     final body = response.data;
@@ -86,6 +90,18 @@ class DocumentRemoteDataSource {
 
     final data = body['data'] as Map<String, dynamic>;
     return DocumentStatusModel.fromJson(data);
+  }
+
+  /// Cancel document processing on server
+  Future<void> cancelDocumentProcessing(String documentId) async {
+    final response = await _dioClient.post<Map<String, dynamic>>(
+      '/v1/documents/$documentId/cancel',
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Document cancellation failed');
+    }
   }
 
   /// Fetch documents from server

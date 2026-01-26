@@ -496,6 +496,14 @@ export class EmbeddingService {
     error: Error,
   ): Promise<void> {
     try {
+      if (error instanceof AppError && error.code === "DOCUMENT_NOT_FOUND") {
+        logger.info("Extraction skipped - document no longer exists", {
+          documentId,
+          error: error.message,
+        });
+        return;
+      }
+
       const docRef = this.db.collection("documents").doc(documentId);
 
       let errorMessage = "Unable to extract text from document";

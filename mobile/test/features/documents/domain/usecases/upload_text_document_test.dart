@@ -5,6 +5,7 @@ import 'package:brainvault/features/documents/domain/entities/document.dart';
 import 'package:brainvault/features/documents/domain/entities/document_status.dart';
 import 'package:brainvault/features/documents/domain/repositories/document_repository.dart';
 import 'package:brainvault/features/documents/domain/usecases/upload_text_document.dart';
+import 'package:dio/dio.dart';
 
 /// Mock repository for testing
 class MockDocumentRepository implements DocumentRepository {
@@ -42,7 +43,10 @@ class MockDocumentRepository implements DocumentRepository {
   }
 
   @override
-  Future<Document> uploadDocument(PlatformFile file) async {
+  Future<Document> uploadDocument(
+    PlatformFile file, {
+    CancelToken? cancelToken,
+  }) async {
     throw UnimplementedError();
   }
 
@@ -58,6 +62,11 @@ class MockDocumentRepository implements DocumentRepository {
 
   @override
   Future<void> deleteDocument(String documentId) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> cancelDocumentProcessing(String documentId) async {
     throw UnimplementedError();
   }
 }

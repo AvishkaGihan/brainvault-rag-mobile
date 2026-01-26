@@ -7,6 +7,14 @@ import * as storage from "../../src/config/storage";
 // Mock Firebase and storage
 jest.mock("firebase-admin/firestore");
 jest.mock("../../src/config/storage");
+jest.mock("../../src/services/vector.service", () => ({
+  VectorService: jest.fn().mockImplementation(() => ({
+    deleteDocumentVectorsByIds: jest
+      .fn<() => Promise<{ deletedCount: number }>>()
+      .mockResolvedValue({ deletedCount: 0 }),
+    upsertDocumentEmbeddings: jest.fn<() => Promise<{ vectorCount: number }>>(),
+  })),
+}));
 
 // Mock validation module
 jest.mock("../../src/utils/validation", () => ({
@@ -63,12 +71,28 @@ describe("DocumentService", () => {
   let mockFirestore: any;
   let mockDocRef: any;
   let mockCollection: any;
+  let mockChunksCollection: any;
 
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
 
     // Setup Firestore mocks
+    const mockChunkDocRef = {
+      id: "0",
+      delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    };
+
+    mockChunksCollection = {
+      doc: jest
+        .fn<(id?: string) => any>()
+        .mockImplementation((id?: string) => ({
+          ...mockChunkDocRef,
+          id: id ?? mockChunkDocRef.id,
+        })),
+      get: jest.fn<() => Promise<any>>().mockResolvedValue({ docs: [] }),
+    };
+
     mockDocRef = {
       id: "doc123",
       set: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
@@ -82,6 +106,8 @@ describe("DocumentService", () => {
         }),
       }),
       delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      update: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      collection: jest.fn<() => any>().mockReturnValue(mockChunksCollection),
     };
 
     mockCollection = {
@@ -90,6 +116,23 @@ describe("DocumentService", () => {
 
     mockFirestore = {
       collection: jest.fn<() => any>().mockReturnValue(mockCollection),
+      batch: jest.fn<() => any>().mockImplementation(() => {
+        const operations: any[] = [];
+        return {
+          delete: jest.fn((ref: any) => operations.push(ref)),
+          commit: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+          _ops: operations,
+        };
+      }),
+      runTransaction: jest
+        .fn<(fn: (tx: any) => Promise<any>) => Promise<any>>()
+        .mockImplementation(async (fn: (tx: any) => Promise<any>) => {
+          const transaction = {
+            get: jest.fn((ref: any) => ref.get()),
+            update: jest.fn((ref: any, data: any) => ref.update(data)),
+          };
+          return fn(transaction);
+        }),
     };
 
     (getFirestore as any).mockReturnValue(mockFirestore);
@@ -385,6 +428,61 @@ describe("DocumentService", () => {
       } catch (error) {
         expect((error as AppError).code).toBe("DOCUMENT_NOT_FOUND");
       }
+    });
+  });
+
+  describe("cancelDocument", () => {
+    test("should delete chunks and document even if Pinecone deletion fails", async () => {
+      mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          id: "doc123",
+          userId: "user123",
+          status: "processing",
+          storagePath: "users/user123/documents/doc123.pdf",
+        }),
+      });
+
+      mockChunksCollection.get.mockResolvedValue({
+        docs: [{ id: "0" }, { id: "1" }],
+      });
+
+      const vectorServiceInstance = (
+        service as unknown as {
+          vectorService: {
+            deleteDocumentVectorsByIds: jest.MockedFunction<
+              () => Promise<{ deletedCount: number }>
+            >;
+          };
+        }
+      ).vectorService;
+
+      vectorServiceInstance.deleteDocumentVectorsByIds.mockRejectedValue(
+        new Error("Pinecone error"),
+      );
+
+      const result = await service.cancelDocument("user123", "doc123");
+
+      expect(result.cancelled).toBe(true);
+      expect(storage.deleteFromStorage).toHaveBeenCalledWith(
+        "users/user123/documents/doc123.pdf",
+      );
+      expect(mockDocRef.delete).toHaveBeenCalled();
+      expect(mockChunksCollection.doc).toHaveBeenCalledWith("0");
+      expect(mockChunksCollection.doc).toHaveBeenCalledWith("1");
+    });
+  });
+
+  describe("triggerTextExtraction", () => {
+    test("should stop processing when document is missing", async () => {
+      mockDocRef.get.mockResolvedValue({
+        exists: false,
+        data: () => undefined,
+      });
+
+      await (service as any).triggerTextExtraction("doc123");
+
+      expect(mockDocRef.update).not.toHaveBeenCalled();
     });
   });
 });

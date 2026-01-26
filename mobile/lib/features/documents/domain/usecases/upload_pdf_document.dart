@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../entities/document.dart';
@@ -9,7 +10,7 @@ class UploadPdfDocument {
 
   const UploadPdfDocument(this._repository);
 
-  Future<Document> call(PlatformFile file) async {
-    return await _repository.uploadDocument(file);
+  Future<Document> call(PlatformFile file, {CancelToken? cancelToken}) async {
+    return await _repository.uploadDocument(file, cancelToken: cancelToken);
   }
 }

@@ -290,6 +290,99 @@ describe("Document Routes Integration", () => {
     });
   });
 
+  describe("POST /api/v1/documents/:documentId/cancel", () => {
+    afterEach(() => {
+      if (defaultDocGetImplementation) {
+        firebaseMocks.mockDocRef.get.mockImplementation(
+          defaultDocGetImplementation,
+        );
+      }
+    });
+
+    it("should reject cancel without auth token", async () => {
+      const response = await request(app)
+        .post("/api/v1/documents/doc123/cancel")
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should return 404 when document not found", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        exists: false,
+        data: () => undefined,
+      });
+
+      const response = await request(app)
+        .post("/api/v1/documents/missing-doc/cancel")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("DOCUMENT_NOT_FOUND");
+    });
+
+    it("should return 404 when user mismatch", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          id: "doc123",
+          userId: "other-user",
+          status: "processing",
+        }),
+      });
+
+      const response = await request(app)
+        .post("/api/v1/documents/doc123/cancel")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("DOCUMENT_NOT_FOUND");
+    });
+
+    it("should return 409 when document is already ready", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          id: "doc123",
+          userId: "testuser123",
+          status: "ready",
+        }),
+      });
+
+      const response = await request(app)
+        .post("/api/v1/documents/doc123/cancel")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("CANCEL_NOT_ALLOWED");
+    });
+
+    it("should cancel document when processing", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          id: "doc123",
+          userId: "testuser123",
+          status: "processing",
+          storagePath: "users/testuser123/documents/doc123.pdf",
+        }),
+      });
+
+      const response = await request(app)
+        .post("/api/v1/documents/doc123/cancel")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.documentId).toBe("doc123");
+      expect(response.body.data.cancelled).toBe(true);
+      expect(response.body.meta).toHaveProperty("timestamp");
+    });
+  });
+
   describe("Concurrent Upload Handling (AC7)", () => {
     it("should handle multiple simultaneous uploads independently", async () => {
       const uploadPromises = [

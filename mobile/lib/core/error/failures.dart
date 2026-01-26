@@ -91,6 +91,10 @@ class DocumentUploadFailure extends DocumentFailure {
   const DocumentUploadFailure([super.message = 'Failed to upload document']);
 }
 
+class UploadCancelledFailure extends DocumentFailure {
+  const UploadCancelledFailure([super.message = 'Upload cancelled']);
+}
+
 class TextTooLongFailure extends DocumentFailure {
   const TextTooLongFailure([
     super.message = 'Text too long. Maximum 50,000 characters.',
@@ -112,6 +116,12 @@ class TitleRequiredFailure extends DocumentFailure {
 class TitleTooLongFailure extends DocumentFailure {
   const TitleTooLongFailure([
     super.message = 'Title too long. Maximum 100 characters.',
+  ]);
+}
+
+class CancelNotAllowedFailure extends DocumentFailure {
+  const CancelNotAllowedFailure([
+    super.message = 'Cancellation is not allowed for completed documents.',
   ]);
 }
 
