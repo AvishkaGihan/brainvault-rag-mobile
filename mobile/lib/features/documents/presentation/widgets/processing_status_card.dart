@@ -32,7 +32,7 @@ class ProcessingStatusCard extends StatelessWidget {
           case DocumentStatus.uploading:
           case DocumentStatus.uploaded:
           case DocumentStatus.pending:
-            return _buildProcessingCard(context);
+            return _buildProcessingCard(context, status);
           case DocumentStatus.ready:
             return _buildSuccessCard(context);
           case DocumentStatus.failed:
@@ -42,7 +42,7 @@ class ProcessingStatusCard extends StatelessWidget {
             );
         }
       },
-      loading: () => _buildProcessingCard(context),
+      loading: () => _buildProcessingCard(context, null),
       error: (error, _) => _buildErrorCard(context, error.toString()),
     );
   }
