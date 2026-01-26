@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_constants.dart';
 
 /// Singleton Dio client with auth interceptors and error handling
@@ -108,14 +109,19 @@ class DioClient {
 /// Auth interceptor that adds Firebase token to all requests
 class _AuthInterceptor extends Interceptor {
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // TODO: Add Firebase token to Authorization header when available
-    // Example:
-    // final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-    // if (token != null) {
-    //   options.headers['Authorization'] = 'Bearer $token';
-    // }
-
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // Proceed without auth header if token retrieval fails
+    }
     handler.next(options);
   }
 

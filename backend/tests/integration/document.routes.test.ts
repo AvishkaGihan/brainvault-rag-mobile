@@ -3,7 +3,14 @@
  * AC1-AC7: Test document upload endpoints with authentication and validation
  */
 
-import { describe, it, expect, beforeAll, jest } from "@jest/globals";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterEach,
+  jest,
+} from "@jest/globals";
 import request from "supertest";
 import express, { Express } from "express";
 import path from "path";
@@ -38,7 +45,9 @@ jest.mock("../../src/config/storage", () => ({
 }));
 
 // Setup Firebase mocks
-setupFirebaseMocks();
+const firebaseMocks = setupFirebaseMocks();
+const defaultDocGetImplementation =
+  firebaseMocks.mockDocRef.get.getMockImplementation();
 
 import { router } from "../../src/routes";
 import { errorHandler } from "../../src/middleware/error.middleware";
@@ -310,6 +319,81 @@ describe("Document Routes Integration", () => {
       const documentIds = responses.map((r) => r.body.data.documentId);
       const uniqueIds = new Set(documentIds);
       expect(uniqueIds.size).toBe(3);
+    });
+  });
+
+  describe("GET /api/v1/documents/:documentId/status", () => {
+    afterEach(() => {
+      if (defaultDocGetImplementation) {
+        firebaseMocks.mockDocRef.get.mockImplementation(
+          defaultDocGetImplementation,
+        );
+      }
+    });
+
+    it("should reject status request without auth token (AC2)", async () => {
+      const response = await request(app)
+        .get("/api/v1/documents/doc123/status")
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should return 404 for non-existent document (AC2)", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        data: () => undefined,
+      });
+
+      const response = await request(app)
+        .get("/api/v1/documents/missing-doc/status")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("DOCUMENT_NOT_FOUND");
+    });
+
+    it("should return processing status for existing document (AC2)", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        data: () => ({
+          id: "doc123",
+          userId: "testuser123",
+          status: "processing",
+          updatedAt: { toDate: () => new Date("2026-01-25T10:00:00Z") },
+        }),
+      });
+
+      const response = await request(app)
+        .get("/api/v1/documents/doc123/status")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.documentId).toBe("doc123");
+      expect(response.body.data.status).toBe("processing");
+      expect(response.body.data).toHaveProperty("updatedAt");
+      expect(response.body.meta).toHaveProperty("timestamp");
+    });
+
+    it("should return ready status with response shape (AC2)", async () => {
+      firebaseMocks.mockDocRef.get.mockResolvedValue({
+        data: () => ({
+          id: "doc123",
+          userId: "testuser123",
+          status: "ready",
+          updatedAt: { toDate: () => new Date("2026-01-25T10:00:00Z") },
+        }),
+      });
+
+      const response = await request(app)
+        .get("/api/v1/documents/doc123/status")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.status).toBe("ready");
+      expect(response.body.data).toHaveProperty("documentId");
+      expect(response.body.data).toHaveProperty("updatedAt");
     });
   });
 

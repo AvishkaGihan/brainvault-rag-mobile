@@ -70,6 +70,24 @@ void main() {
       expect(model.status, DocumentStatus.processing);
     });
 
+    test('should map backend error status to failed', () {
+      // Arrange
+      final json = {
+        'id': '789',
+        'title': 'Errored Document',
+        'fileName': 'error.pdf',
+        'fileSize': 1024,
+        'status': 'error',
+        'createdAt': '2026-01-20T10:00:00.000Z',
+      };
+
+      // Act
+      final model = DocumentModel.fromJson(json);
+
+      // Assert
+      expect(model.status, DocumentStatus.failed);
+    });
+
     test('should handle all DocumentStatus enum values', () {
       // Test all status conversions
       final statuses = [

@@ -64,7 +64,7 @@ void main() {
         final mockGoRouter = MockGoRouter();
         when(
           () => mockGoRouter.push('/forgot-password'),
-        ).thenAnswer((_) {}); // ignore: body_might_complete_normally
+        ).thenAnswer((_) async => null);
 
         await tester.pumpWidget(
           InheritedGoRouter(goRouter: mockGoRouter, child: createLoginScreen()),

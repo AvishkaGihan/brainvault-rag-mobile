@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { DocumentService } from "../services/document.service";
-import { AppError } from "../types/api.types";
+import { AppError, type ApiResponse } from "../types/api.types";
+import { getCurrentTimestamp } from "../utils/helpers";
 import type {
   CreateTextDocumentRequest,
   DocumentUploadResponse,
+  DocumentStatusResponse,
 } from "../types/document.types";
 
 /**
@@ -107,6 +109,37 @@ export class DocumentController {
       };
 
       res.status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Handle document status check
+   * AC2: GET /api/v1/documents/:documentId/status
+   */
+  getDocumentStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const userId = req.user!.uid;
+      const { documentId } = req.params;
+
+      const status = await this.documentService.getDocumentStatus(
+        userId,
+        documentId,
+      );
+
+      const timestamp = getCurrentTimestamp();
+      const response: ApiResponse<DocumentStatusResponse> = {
+        success: true,
+        data: status,
+        meta: { timestamp },
+      };
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }

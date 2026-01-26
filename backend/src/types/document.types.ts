@@ -61,6 +61,19 @@ export interface DocumentUploadResponse {
 }
 
 /**
+ * API response data for document status checks
+ * AC2: Status endpoint response shape
+ */
+export interface DocumentStatusResponse {
+  documentId: string;
+  status: DocumentStatus;
+  progress?: number;
+  processingStage?: string;
+  errorMessage?: string;
+  updatedAt: string; // ISO 8601 string
+}
+
+/**
  * Request body for text document creation
  * AC3: Text document endpoint
  */

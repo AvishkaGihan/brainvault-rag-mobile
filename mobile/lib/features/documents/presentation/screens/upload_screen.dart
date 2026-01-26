@@ -6,8 +6,10 @@ import '../../../../shared/widgets/app_bar.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
+import '../../domain/entities/document.dart';
 import '../providers/upload_provider.dart';
 import '../widgets/file_preview_card.dart';
+import '../widgets/processing_status_card.dart';
 
 /// Screen for handling file upload flow
 /// Shows file preview and upload confirmation
@@ -17,6 +19,39 @@ class UploadScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fileState = ref.watch(fileSelectionProvider);
+    final statusState = ref.watch(documentStatusProvider);
+    final uploadState = ref.watch(uploadPdfProvider);
+    final showStatusCard =
+        statusState.isLoading ||
+        statusState.hasError ||
+        statusState.asData?.value != null;
+    final isUploading = uploadState.isLoading;
+
+    ref.listen<AsyncValue<Document?>>(uploadPdfProvider, (_, next) {
+      next.whenOrNull(
+        data: (document) {
+          if (document == null) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Upload complete. Processing started.'),
+            ),
+          );
+          ref.read(documentStatusProvider.notifier).pollStatus(document.id);
+        },
+        error: (error, _) {
+          _showErrorSnackBar(
+            context,
+            error.toString(),
+            onRetry: () {
+              final file = ref.read(fileSelectionProvider).asData?.value;
+              if (file != null) {
+                ref.read(uploadPdfProvider.notifier).upload(file);
+              }
+            },
+          );
+        },
+      );
+    });
 
     // Listen for errors and show SnackBar
     ref.listen<AsyncValue<dynamic>>(fileSelectionProvider, (_, state) {
@@ -70,22 +105,31 @@ class UploadScreen extends ConsumerWidget {
             );
           }
 
-          return FilePreviewCard(
-            file: file,
-            onUpload: () {
-              // TODO: Implement upload flow in Story 3.3
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Upload functionality will be implemented in Story 3.3',
-                  ),
+          return Column(
+            children: [
+              FilePreviewCard(
+                file: file,
+                onUpload: () {
+                  if (isUploading) return;
+                  ref.read(uploadPdfProvider.notifier).upload(file);
+                },
+                onCancel: () {
+                  ref.read(fileSelectionProvider.notifier).clearSelectedFile();
+                  Navigator.pop(context);
+                },
+              ),
+              if (showStatusCard)
+                ProcessingStatusCard(
+                  statusState: statusState,
+                  onRetry: () =>
+                      ref.read(documentStatusProvider.notifier).retry(),
                 ),
-              );
-            },
-            onCancel: () {
-              ref.read(fileSelectionProvider.notifier).clearSelectedFile();
-              Navigator.pop(context);
-            },
+              if (isUploading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: LoadingIndicator(),
+                ),
+            ],
           );
         },
         loading: () => const Center(

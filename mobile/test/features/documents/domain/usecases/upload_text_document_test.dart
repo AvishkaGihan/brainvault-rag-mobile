@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brainvault/core/error/failures.dart';
 import 'package:brainvault/features/documents/domain/entities/document.dart';
+import 'package:brainvault/features/documents/domain/entities/document_status.dart';
 import 'package:brainvault/features/documents/domain/repositories/document_repository.dart';
 import 'package:brainvault/features/documents/domain/usecases/upload_text_document.dart';
 
@@ -47,6 +48,11 @@ class MockDocumentRepository implements DocumentRepository {
 
   @override
   Future<List<Document>> getDocuments() async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<DocumentStatusInfo> getDocumentStatus(String documentId) async {
     throw UnimplementedError();
   }
 

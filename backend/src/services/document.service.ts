@@ -6,7 +6,11 @@ import {
 } from "../config/storage";
 import { validatePDFContent, validateTextDocument } from "../utils/validation";
 import { AppError, ValidationError } from "../types/api.types";
-import type { Document, CreateDocumentDTO } from "../types/document.types";
+import type {
+  Document,
+  CreateDocumentDTO,
+  DocumentStatusResponse,
+} from "../types/document.types";
 import type { EmbeddingInputChunk } from "../types/embedding.types";
 import { logger } from "../utils/logger";
 import { EmbeddingService } from "./embedding.service";
@@ -158,6 +162,38 @@ export class DocumentService {
     });
 
     return document;
+  }
+
+  /**
+   * Get document processing status
+   * AC2: Status endpoint with user isolation and non-leaking errors
+   */
+  async getDocumentStatus(
+    userId: string,
+    documentId: string,
+  ): Promise<DocumentStatusResponse> {
+    const docSnap = await this.db.collection("documents").doc(documentId).get();
+
+    const document = docSnap.data() as Document | undefined;
+
+    if (!document || document.userId !== userId) {
+      throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
+    }
+
+    // Convert Firestore Timestamp to ISO string
+    // Firestore Timestamp has toDate() method that returns Date object
+    const timestampDate = (document.updatedAt || document.createdAt) as any;
+    const updatedAt =
+      timestampDate && typeof timestampDate.toDate === "function"
+        ? timestampDate.toDate()
+        : new Date();
+
+    return {
+      documentId,
+      status: document.status,
+      ...(document.errorMessage && { errorMessage: document.errorMessage }),
+      updatedAt: updatedAt.toISOString(),
+    };
   }
 
   /**

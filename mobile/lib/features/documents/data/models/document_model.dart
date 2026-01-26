@@ -92,6 +92,7 @@ class DocumentModel extends Document {
         return DocumentStatus.processing;
       case 'ready':
         return DocumentStatus.ready;
+      case 'error':
       case 'failed':
         return DocumentStatus.failed;
       default:

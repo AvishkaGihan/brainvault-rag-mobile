@@ -84,6 +84,15 @@ export function setupFirebaseMocks() {
       });
     }),
     delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    update: jest
+      .fn<(data: any) => Promise<void>>()
+      .mockImplementation(function (this: any, data: any) {
+        // Update stored document with partial data
+        if (storedData[this.id]) {
+          storedData[this.id] = { ...storedData[this.id], ...data };
+        }
+        return Promise.resolve(undefined);
+      }),
   };
 
   const mockCollection = {
