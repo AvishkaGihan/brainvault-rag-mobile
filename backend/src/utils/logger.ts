@@ -3,6 +3,8 @@
  * Simple logging utility for consistent formatting
  */
 
+import { env } from "../config/env";
+
 const LOG_LEVELS = {
   DEBUG: "DEBUG",
   INFO: "INFO",
@@ -30,7 +32,7 @@ class Logger {
   }
 
   debug(message: string, data?: unknown): void {
-    if (process.env.NODE_ENV === "development") {
+    if (env.nodeEnv === "development") {
       console.log(this.formatMessage(LOG_LEVELS.DEBUG, message, data));
     }
   }
