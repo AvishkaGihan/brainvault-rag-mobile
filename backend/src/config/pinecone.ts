@@ -20,6 +20,7 @@
 
 import { Pinecone } from "@pinecone-database/pinecone";
 import { env } from "./env";
+import { logger } from "../utils/logger";
 
 /**
  * Initialize Pinecone client
@@ -39,11 +40,10 @@ try {
     apiKey: env.pineconeApiKey,
   });
 } catch (error) {
-  console.error(
-    "Failed to initialize Pinecone client:",
-    error instanceof Error ? error.message : String(error),
-  );
-  console.error(
+  logger.error("Failed to initialize Pinecone client", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  logger.error(
     "Vector database will be unavailable. Check PINECONE_API_KEY and network connectivity.",
   );
 }
@@ -74,10 +74,9 @@ if (pineconeInstance) {
   try {
     indexInstance = pineconeInstance.index(env.pineconeIndex);
   } catch (error) {
-    console.error(
-      "Failed to connect to Pinecone index:",
-      error instanceof Error ? error.message : String(error),
-    );
+    logger.error("Failed to connect to Pinecone index", {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
