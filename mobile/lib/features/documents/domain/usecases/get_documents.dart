@@ -9,7 +9,6 @@ class GetDocuments {
   const GetDocuments(this._repository);
 
   /// Get all documents for current user
-  /// TODO: Implement in Story 4.1 - Document Management & Library
   Future<List<Document>> call() async {
     // Stub implementation - returns empty list
     return await _repository.getDocuments();

@@ -13,6 +13,11 @@ import '../widgets/upload_fab.dart';
 import '../widgets/upload_options_bottom_sheet.dart';
 import '../providers/upload_provider.dart';
 
+class _Strings {
+  static const String offlineBannerText = 'Offline - showing cached data';
+  static const String requiresInternetSnackbar = 'Requires internet connection';
+}
+
 /// Home screen displaying documents library
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -30,6 +35,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final documentsState = ref.watch(documentsProvider);
+    final showOfflineBanner = ref.watch(documentsOfflineBannerProvider);
 
     // Listen for file selection and navigate to upload screen
     ref.listen(fileSelectionProvider, (_, state) {
@@ -55,10 +61,30 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: documentsState.when(
         data: (documents) {
-          if (documents.isEmpty) {
-            return const EmptyDocuments();
-          }
-          return DocumentList(documents: documents);
+          final content = documents.isEmpty
+              ? const EmptyDocuments()
+              : DocumentList(documents: documents);
+
+          return Column(
+            children: [
+              if (showOfflineBanner)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  child: Text(
+                    _Strings.offlineBannerText,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
+                  ),
+                ),
+              Expanded(child: content),
+            ],
+          );
         },
         loading: () => const ListSkeletonLoader(),
         error: (error, stack) {
@@ -84,7 +110,15 @@ class HomeScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: UploadFab(
-        onPressed: () => _showUploadOptions(context),
+        onPressed: () {
+          if (showOfflineBanner) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(_Strings.requiresInternetSnackbar)),
+            );
+            return;
+          }
+          _showUploadOptions(context);
+        },
       ),
     );
   }
