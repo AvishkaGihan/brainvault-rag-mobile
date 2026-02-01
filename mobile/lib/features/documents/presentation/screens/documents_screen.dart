@@ -16,6 +16,8 @@ import '../providers/upload_provider.dart';
 class _Strings {
   static const String offlineBannerText = 'Offline - showing cached data';
   static const String requiresInternetSnackbar = 'Requires internet connection';
+  static const String refreshFailedSnackbar =
+      "Couldn't refresh. Please try again.";
 }
 
 /// Home screen displaying documents library
@@ -61,8 +63,45 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: documentsState.when(
         data: (documents) {
+          Future<void> handleRefresh() async {
+            final failure = await ref
+                .read(documentsProvider.notifier)
+                .refreshForPullToRefresh();
+            if (!context.mounted) {
+              return;
+            }
+            if (failure is ConnectionFailure || failure is TimeoutFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(_Strings.refreshFailedSnackbar),
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            } else if (failure != null) {
+              // Show user-friendly error message (not raw error codes)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    failure is UnknownFailure
+                        ? 'Failed to refresh. Please try again.'
+                        : failure.message,
+                  ),
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
+
           final content = documents.isEmpty
-              ? const EmptyDocuments()
+              ? const CustomScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyDocuments(),
+                    ),
+                  ],
+                )
               : DocumentList(documents: documents);
 
           return Column(
@@ -82,7 +121,12 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              Expanded(child: content),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: handleRefresh,
+                  child: content,
+                ),
+              ),
             ],
           );
         },
