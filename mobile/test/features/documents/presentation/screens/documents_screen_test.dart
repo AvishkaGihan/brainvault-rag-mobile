@@ -26,6 +26,15 @@ class FakeFileSelectionNotifier extends FileSelectionNotifier {
   Future<PlatformFile?> build() async => null;
 }
 
+class TestOfflineBannerNotifier extends DocumentsOfflineBannerNotifier {
+  final bool initialValue;
+
+  TestOfflineBannerNotifier(this.initialValue);
+
+  @override
+  bool build() => initialValue;
+}
+
 void main() {
   testWidgets('shows skeleton loader while loading', (tester) async {
     final completer = Completer<List<Document>>();
@@ -93,5 +102,97 @@ void main() {
 
     expect(find.byType(DocumentCard), findsOneWidget);
     expect(find.text('Quarterly Report'), findsOneWidget);
+  });
+
+  testWidgets('cached documents render without skeleton loader', (
+    tester,
+  ) async {
+    final documents = [
+      Document(
+        id: 'doc-2',
+        title: 'Cached Doc',
+        fileName: 'cached.pdf',
+        fileSize: 1024,
+        status: DocumentStatus.ready,
+        createdAt: DateTime(2026, 1, 10),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentsProvider.overrideWith(
+            () => TestDocumentsNotifier(() async => documents),
+          ),
+          fileSelectionProvider.overrideWith(() => FakeFileSelectionNotifier()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ListSkeletonLoader), findsNothing);
+    expect(find.text('Cached Doc'), findsOneWidget);
+  });
+
+  testWidgets('shows offline banner when cached list is offline', (
+    tester,
+  ) async {
+    final documents = [
+      Document(
+        id: 'doc-3',
+        title: 'Offline Doc',
+        fileName: 'offline.pdf',
+        fileSize: 2048,
+        status: DocumentStatus.ready,
+        createdAt: DateTime(2026, 1, 12),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentsProvider.overrideWith(
+            () => TestDocumentsNotifier(() async => documents),
+          ),
+          documentsOfflineBannerProvider.overrideWith(
+            () => TestOfflineBannerNotifier(true),
+          ),
+          fileSelectionProvider.overrideWith(() => FakeFileSelectionNotifier()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Offline - showing cached data'), findsOneWidget);
+  });
+
+  testWidgets('shows offline SnackBar when upload tapped offline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentsProvider.overrideWith(
+            () => TestDocumentsNotifier(() async => []),
+          ),
+          documentsOfflineBannerProvider.overrideWith(
+            () => TestOfflineBannerNotifier(true),
+          ),
+          fileSelectionProvider.overrideWith(() => FakeFileSelectionNotifier()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Upload Document'));
+    await tester.pump();
+
+    expect(find.text('Requires internet connection'), findsOneWidget);
   });
 }

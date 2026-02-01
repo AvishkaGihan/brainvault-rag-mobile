@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/cache/document_cache.dart';
+import '../../../../core/error/failures.dart';
 import '../../domain/entities/document.dart';
 import '../../domain/usecases/get_documents.dart';
 import 'upload_provider.dart';
@@ -10,22 +12,97 @@ final getDocumentsUseCaseProvider = Provider<GetDocuments>((ref) {
   return GetDocuments(repository);
 });
 
+/// Provider for document cache
+final documentCacheProvider = Provider<DocumentCache>((ref) {
+  return DocumentCache();
+});
+
+/// Offline banner state when cached data is shown due to offline refresh
+class DocumentsOfflineBannerNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    return false;
+  }
+
+  void set(bool value) {
+    state = value;
+  }
+}
+
+final documentsOfflineBannerProvider =
+    NotifierProvider<DocumentsOfflineBannerNotifier, bool>(() {
+      return DocumentsOfflineBannerNotifier();
+    });
+
 /// Notifier for managing documents list state
 /// STUB: Returns empty list until Story 4.1
 class DocumentsNotifier extends AsyncNotifier<List<Document>> {
+  bool _isRefreshing = false;
+
   @override
   Future<List<Document>> build() async {
-    final useCase = ref.watch(getDocumentsUseCaseProvider);
-    return await useCase();
+    final cache = await ref.read(documentCacheProvider).read();
+    if (cache != null) {
+      _setOfflineBanner(false);
+      Future.microtask(_refreshInBackground);
+      return cache;
+    }
+
+    return await _fetchAndCache();
   }
 
   /// Refresh documents list
   Future<void> refresh() async {
+    final current = state.value;
+    if (current != null) {
+      await _refreshInBackground();
+      return;
+    }
+
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    state = await AsyncValue.guard(() async => _fetchAndCache());
+  }
+
+  Future<List<Document>> _fetchAndCache() async {
+    final useCase = ref.read(getDocumentsUseCaseProvider);
+    final documents = await useCase();
+    _setOfflineBanner(false);
+    await ref.read(documentCacheProvider).write(documents);
+    return documents;
+  }
+
+  Future<void> _refreshInBackground() async {
+    if (_isRefreshing) return; // Prevent concurrent refreshes
+    _isRefreshing = true;
+    try {
       final useCase = ref.read(getDocumentsUseCaseProvider);
-      return await useCase();
-    });
+      final documents = await useCase();
+      if (!ref.mounted) {
+        return;
+      }
+      state = AsyncData(documents);
+      _setOfflineBanner(false);
+      await ref.read(documentCacheProvider).write(documents);
+    } on Failure catch (failure) {
+      if (failure is ConnectionFailure || failure is TimeoutFailure) {
+        _setOfflineBanner(true);
+      } else {
+        // For non-connection errors, clear offline banner
+        _setOfflineBanner(false);
+      }
+    } catch (_) {
+      // Ignore other background refresh errors
+      _setOfflineBanner(false);
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  void _setOfflineBanner(bool value) {
+    final notifier = ref.read(documentsOfflineBannerProvider.notifier);
+    if (notifier.state != value) {
+      notifier.set(value);
+    }
   }
 }
 
