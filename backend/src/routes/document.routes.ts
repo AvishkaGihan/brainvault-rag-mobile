@@ -19,6 +19,13 @@ router.post(
 );
 
 /**
+ * GET /api/v1/documents
+ * List documents for authenticated user
+ * Story 4.1: Document list screen
+ */
+router.get("/", documentController.listDocuments);
+
+/**
  * POST /api/v1/documents/:documentId/cancel
  * Cancel document upload or processing
  * Story 3.9: Upload cancellation

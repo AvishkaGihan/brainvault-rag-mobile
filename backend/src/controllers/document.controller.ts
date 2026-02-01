@@ -6,6 +6,7 @@ import type {
   CreateTextDocumentRequest,
   DocumentUploadResponse,
   DocumentStatusResponse,
+  DocumentListItem,
 } from "../types/document.types";
 
 /**
@@ -137,6 +138,32 @@ export class DocumentController {
         success: true,
         data: status,
         meta: { timestamp },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Handle document list
+   * Story 4.1: GET /api/v1/documents
+   */
+  listDocuments = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const userId = req.user!.uid;
+      const documents = await this.documentService.listDocuments(userId);
+
+      const timestamp = getCurrentTimestamp();
+      const response: ApiResponse<DocumentListItem[]> = {
+        success: true,
+        data: documents,
+        meta: { count: documents.length, timestamp },
       };
 
       res.status(200).json(response);

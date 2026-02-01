@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { VectorService } from "../../../src/services/vector.service";
 import { RateLimitError } from "../../../src/types/api.types";
 import type { EmbeddingResult } from "../../../src/types/embedding.types";
+import type { VectorStorageRequest } from "../../../src/types/vector.types";
 
 jest.mock("../../../src/utils/logger", () => ({
   logger: {
@@ -21,28 +22,48 @@ const createEmbedding = (chunkIndex: number): EmbeddingResult => ({
 });
 
 describe("VectorService", () => {
-  type UpsertParams = {
-    vectors: Array<{
-      id: string;
-      values: number[];
-      metadata: Record<string, unknown>;
-    }>;
-    namespace?: string;
-  };
   let mockIndex: {
-    upsert: jest.MockedFunction<(params: UpsertParams) => Promise<unknown>>;
+    upsert: jest.MockedFunction<
+      (vectors: VectorStorageRequest[]) => Promise<unknown>
+    >;
+    namespace: jest.MockedFunction<
+      (ns: string) => {
+        upsert: jest.MockedFunction<
+          (vectors: VectorStorageRequest[]) => Promise<unknown>
+        >;
+        deleteMany: jest.MockedFunction<(ids: string[]) => Promise<unknown>>;
+      }
+    >;
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     const upsert = jest
-      .fn(async (_params: UpsertParams) => ({}))
+      .fn(async (_vectors: VectorStorageRequest[]) => ({}))
       .mockResolvedValue({}) as jest.MockedFunction<
-      (params: UpsertParams) => Promise<unknown>
+      (vectors: VectorStorageRequest[]) => Promise<unknown>
+    >;
+
+    const deleteMany = jest
+      .fn(async (_ids: string[]) => ({}))
+      .mockResolvedValue({}) as jest.MockedFunction<
+      (ids: string[]) => Promise<unknown>
+    >;
+
+    const namespace = jest
+      .fn((_ns: string) => ({ upsert, deleteMany }))
+      .mockReturnValue({ upsert, deleteMany }) as jest.MockedFunction<
+      (ns: string) => {
+        upsert: jest.MockedFunction<
+          (vectors: VectorStorageRequest[]) => Promise<unknown>
+        >;
+        deleteMany: jest.MockedFunction<(ids: string[]) => Promise<unknown>>;
+      }
     >;
 
     mockIndex = {
       upsert,
+      namespace,
     };
   });
 
@@ -55,19 +76,19 @@ describe("VectorService", () => {
       embeddings: [createEmbedding(0), createEmbedding(1)],
     });
 
+    expect(mockIndex.namespace).toHaveBeenCalledWith("user-1");
     expect(mockIndex.upsert).toHaveBeenCalledTimes(1);
     const call = mockIndex.upsert.mock.calls[0][0];
-    expect(call.namespace).toBe("user-1");
-    expect(call.vectors).toHaveLength(2);
-    expect(call.vectors[0].id).toBe("doc-1_0");
-    expect(call.vectors[0].metadata).toEqual({
+    expect(call).toHaveLength(2);
+    expect(call[0].id).toBe("doc-1_0");
+    expect(call[0].metadata).toEqual({
       userId: "user-1",
       documentId: "doc-1",
       pageNumber: 1,
       chunkIndex: 0,
       textPreview: "preview text",
     });
-    expect(call.vectors[0].values).toHaveLength(768);
+    expect(call[0].values).toHaveLength(768);
   });
 
   it("should batch upserts into max 100 vectors", async () => {
@@ -83,9 +104,9 @@ describe("VectorService", () => {
     });
 
     expect(mockIndex.upsert).toHaveBeenCalledTimes(3);
-    expect(mockIndex.upsert.mock.calls[0][0].vectors).toHaveLength(100);
-    expect(mockIndex.upsert.mock.calls[1][0].vectors).toHaveLength(100);
-    expect(mockIndex.upsert.mock.calls[2][0].vectors).toHaveLength(50);
+    expect(mockIndex.upsert.mock.calls[0][0]).toHaveLength(100);
+    expect(mockIndex.upsert.mock.calls[1][0]).toHaveLength(100);
+    expect(mockIndex.upsert.mock.calls[2][0]).toHaveLength(50);
   });
 
   it("should retry on rate limit and eventually succeed", async () => {

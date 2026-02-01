@@ -30,7 +30,6 @@ class DocumentModel extends Document {
   }
 
   /// Create DocumentModel from JSON (server response)
-  /// TODO: Implement in Story 3.3 when backend API is ready
   factory DocumentModel.fromJson(Map<String, dynamic> json) {
     return DocumentModel(
       id: json['id'] as String,
@@ -47,7 +46,6 @@ class DocumentModel extends Document {
   }
 
   /// Convert DocumentModel to JSON
-  /// TODO: Used for API requests in Story 3.3
   Map<String, dynamic> toJson() {
     return {
       'id': id,

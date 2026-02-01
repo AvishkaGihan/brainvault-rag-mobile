@@ -75,6 +75,22 @@ export interface DocumentStatusResponse {
 }
 
 /**
+ * API response item for document list
+ * Story 4.1: Document list screen
+ */
+export interface DocumentListItem {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  pageCount: number;
+  status: DocumentStatus;
+  createdAt: string; // ISO 8601 string
+  updatedAt: string; // ISO 8601 string
+  errorMessage?: string | null;
+}
+
+/**
  * Request body for text document creation
  * AC3: Text document endpoint
  */

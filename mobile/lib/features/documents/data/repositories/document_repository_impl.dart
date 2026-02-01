@@ -130,9 +130,25 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   @override
   Future<List<Document>> getDocuments() async {
-    // TODO: Implement in Story 4.1
-    // Stub: return empty list
-    return [];
+    try {
+      final data = await _remoteDataSource.fetchDocuments();
+      return data.map(DocumentModel.fromJson).toList();
+    } on DocumentFailure {
+      rethrow;
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          throw const TimeoutFailure('Request timed out');
+        case DioExceptionType.connectionError:
+          throw const ConnectionFailure();
+        default:
+          throw const ServerFailure();
+      }
+    } catch (e) {
+      throw UnknownFailure('Failed to load documents: ${e.toString()}');
+    }
   }
 
   @override
