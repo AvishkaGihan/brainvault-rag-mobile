@@ -11,6 +11,7 @@ import type {
   Document,
   CreateDocumentDTO,
   DocumentStatusResponse,
+  DocumentListItem,
 } from "../types/document.types";
 import type { EmbeddingInputChunk } from "../types/embedding.types";
 import { logger } from "../utils/logger";
@@ -181,20 +182,48 @@ export class DocumentService {
       throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
     }
 
-    // Convert Firestore Timestamp to ISO string
-    // Firestore Timestamp has toDate() method that returns Date object
-    const timestampDate = (document.updatedAt || document.createdAt) as any;
-    const updatedAt =
-      timestampDate && typeof timestampDate.toDate === "function"
-        ? timestampDate.toDate()
-        : new Date();
+    const updatedAt = this.toIsoString(
+      document.updatedAt || document.createdAt,
+    );
 
     return {
       documentId,
       status: document.status,
       ...(document.errorMessage && { errorMessage: document.errorMessage }),
-      updatedAt: updatedAt.toISOString(),
+      updatedAt,
     };
+  }
+
+  /**
+   * List documents for a user (newest-first)
+   * Story 4.1: Document list screen
+   */
+  async listDocuments(userId: string): Promise<DocumentListItem[]> {
+    const snapshot = await this.db
+      .collection("documents")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(20)
+      .get();
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as Document;
+      const createdAt = this.toIsoString(data.createdAt);
+      const updatedAt = this.toIsoString(data.updatedAt);
+
+      return {
+        id: data.id ?? doc.id,
+        title: data.title,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        pageCount: data.pageCount,
+        status: data.status,
+        createdAt,
+        updatedAt,
+        errorMessage:
+          data.status === "error" ? (data.errorMessage ?? null) : null,
+      };
+    });
   }
 
   /**
@@ -316,6 +345,17 @@ export class DocumentService {
     });
 
     return { documentId, cancelled: true };
+  }
+
+  private toIsoString(timestamp?: unknown): string {
+    if (
+      timestamp &&
+      typeof (timestamp as { toDate?: unknown }).toDate === "function"
+    ) {
+      return (timestamp as { toDate: () => Date }).toDate().toISOString();
+    }
+
+    return new Date().toISOString();
   }
 
   /**

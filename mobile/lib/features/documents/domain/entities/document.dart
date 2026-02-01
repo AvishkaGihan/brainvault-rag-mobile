@@ -75,22 +75,27 @@ class Document {
 }
 
 /// Document processing status
+/// Maps to backend enum: uploading | processing | ready | error
+/// Local states (pending, uploaded) are client-side only
 enum DocumentStatus {
-  /// File selected but not yet uploaded
+  /// File selected but not yet uploaded (client-side only)
   pending,
 
-  /// File is being uploaded to server
+  /// File is being uploaded to server (client-side only)
   uploading,
 
-  /// Upload complete, awaiting processing
+  /// Upload complete, awaiting processing (client-side only)
   uploaded,
 
   /// Document is being processed (text extraction, chunking, embedding)
+  /// Maps to backend 'processing' status
   processing,
 
   /// Document processing complete and ready for chat
+  /// Maps to backend 'ready' status
   ready,
 
   /// Processing failed
+  /// Maps to backend 'error' status
   failed,
 }

@@ -105,9 +105,22 @@ class DocumentRemoteDataSource {
   }
 
   /// Fetch documents from server
-  /// TODO: Implement in Story 4.1 - Implement Document List Screen
   Future<List<Map<String, dynamic>>> fetchDocuments() async {
-    throw UnimplementedError('Fetch will be implemented in Story 4.1');
+    final response = await _dioClient.get<Map<String, dynamic>>(
+      '/v1/documents',
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Document list fetch failed');
+    }
+
+    final data = body['data'];
+    if (data is! List) {
+      throw Exception('Invalid document list response');
+    }
+
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   /// Delete document from server

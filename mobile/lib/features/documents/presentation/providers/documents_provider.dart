@@ -15,15 +15,15 @@ final getDocumentsUseCaseProvider = Provider<GetDocuments>((ref) {
 class DocumentsNotifier extends AsyncNotifier<List<Document>> {
   @override
   Future<List<Document>> build() async {
-    // TODO: Implement in Story 4.1 - Document Management & Library
-    return [];
+    final useCase = ref.watch(getDocumentsUseCaseProvider);
+    return await useCase();
   }
 
   /// Refresh documents list
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final useCase = ref.watch(getDocumentsUseCaseProvider);
+      final useCase = ref.read(getDocumentsUseCaseProvider);
       return await useCase();
     });
   }

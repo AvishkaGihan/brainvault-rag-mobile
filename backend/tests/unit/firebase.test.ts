@@ -95,7 +95,7 @@ describe("Firebase Environment Configuration", () => {
 
     if (!credentialsJson) {
       console.warn(
-        "Skipping: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)"
+        "Skipping: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
       );
       expect(true).toBe(true); // Skip with warning
       return;
@@ -135,6 +135,18 @@ describe("Firebase Firestore Operations", () => {
    * GREEN: Document should be created successfully
    */
   it("should create a test document in Firestore", async () => {
+    const credentialsJson =
+      process.env.FIREBASE_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!credentialsJson) {
+      console.warn(
+        "Skipping Firestore create test: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
+      );
+      expect(true).toBe(true); // Skip with warning
+      return;
+    }
+
     try {
       const docRef = firestore.collection(TEST_COLLECTION).doc(TEST_DOC_ID);
       await docRef.set(SAMPLE_DOCUMENT);
@@ -150,6 +162,18 @@ describe("Firebase Firestore Operations", () => {
    * GREEN: Document should exist and match what was written
    */
   it("should read the test document from Firestore", async () => {
+    const credentialsJson =
+      process.env.FIREBASE_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!credentialsJson) {
+      console.warn(
+        "Skipping Firestore read test: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
+      );
+      expect(true).toBe(true); // Skip with warning
+      return;
+    }
+
     try {
       const docRef = firestore.collection(TEST_COLLECTION).doc(TEST_DOC_ID);
       const doc = await docRef.get();
@@ -170,6 +194,18 @@ describe("Firebase Firestore Operations", () => {
    * GREEN: Should return only documents matching the userId
    */
   it("should query documents filtered by userId", async () => {
+    const credentialsJson =
+      process.env.FIREBASE_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!credentialsJson) {
+      console.warn(
+        "Skipping Firestore query test: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
+      );
+      expect(true).toBe(true); // Skip with warning
+      return;
+    }
+
     try {
       const querySnapshot = await firestore
         .collection(TEST_COLLECTION)
@@ -191,6 +227,18 @@ describe("Firebase Firestore Operations", () => {
    * GREEN: Document should be deleted successfully
    */
   it("should delete the test document from Firestore", async () => {
+    const credentialsJson =
+      process.env.FIREBASE_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!credentialsJson) {
+      console.warn(
+        "Skipping Firestore delete test: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
+      );
+      expect(true).toBe(true); // Skip with warning
+      return;
+    }
+
     try {
       const docRef = firestore.collection(TEST_COLLECTION).doc(TEST_DOC_ID);
       await docRef.delete();
@@ -215,6 +263,18 @@ describe("Firebase Auth Operations", () => {
    * GREEN: Auth API should respond without error
    */
   it("should have accessible Firebase Auth API", async () => {
+    const credentialsJson =
+      process.env.FIREBASE_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!credentialsJson) {
+      console.warn(
+        "Skipping Auth API test: FIREBASE_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY not set (expected for CI without secrets)",
+      );
+      expect(true).toBe(true); // Skip with warning
+      return;
+    }
+
     try {
       // Try to get user count (this will work if auth is connected)
       const listUsersResult = await auth.listUsers(1);
@@ -224,7 +284,7 @@ describe("Firebase Auth Operations", () => {
       console.warn("Skipping Auth API test:", error);
       expect(true).toBe(true); // Skip if no credentials or permissions
     }
-  });
+  }, 10000); // 10 second timeout for network operations
 });
 
 /**

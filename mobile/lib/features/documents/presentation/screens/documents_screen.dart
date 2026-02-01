@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/app_bar.dart';
 import '../../../../shared/widgets/error_view.dart';
-import '../../../../shared/widgets/loading_indicator.dart';
+import '../../../../shared/widgets/skeleton_loader.dart';
+import '../../../../core/error/failures.dart';
 import '../providers/documents_provider.dart';
 import '../widgets/empty_documents.dart';
+import '../widgets/document_list.dart';
 import '../widgets/upload_fab.dart';
 import '../widgets/upload_options_bottom_sheet.dart';
 import '../providers/upload_provider.dart';
@@ -56,15 +58,30 @@ class HomeScreen extends ConsumerWidget {
           if (documents.isEmpty) {
             return const EmptyDocuments();
           }
-          // TODO: Show document list when documents exist (Story 4.1)
-          return const EmptyDocuments();
+          return DocumentList(documents: documents);
         },
-        loading: () => const Center(child: LoadingIndicator()),
-        error: (error, stack) => ErrorView(
-          title: 'Error loading documents',
-          message: error.toString(),
-          type: ErrorViewType.generic,
-        ),
+        loading: () => const ListSkeletonLoader(),
+        error: (error, stack) {
+          final message = switch (error) {
+            Failure(:final message) => message,
+            _ => 'Something went wrong. Please try again.',
+          };
+
+          final type = switch (error) {
+            ConnectionFailure() || TimeoutFailure() => ErrorViewType.network,
+            SessionExpiredFailure() => ErrorViewType.auth,
+            _ => ErrorViewType.generic,
+          };
+
+          return Center(
+            child: ErrorView(
+              title: 'Error loading documents',
+              message: message,
+              type: type,
+              onRetry: () => ref.read(documentsProvider.notifier).refresh(),
+            ),
+          );
+        },
       ),
       floatingActionButton: UploadFab(
         onPressed: () => _showUploadOptions(context),

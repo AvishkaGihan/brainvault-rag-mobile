@@ -383,6 +383,109 @@ describe("Document Routes Integration", () => {
     });
   });
 
+  describe("GET /api/v1/documents", () => {
+    const defaultCollectionImplementation =
+      firebaseMocks.mockFirestore.collection.getMockImplementation();
+
+    afterEach(() => {
+      if (defaultCollectionImplementation) {
+        firebaseMocks.mockFirestore.collection.mockImplementation(
+          defaultCollectionImplementation,
+        );
+      }
+    });
+
+    it("should return only user's documents in newest-first order (AC1-AC3)", async () => {
+      const mockDocs = [
+        {
+          id: "doc-new",
+          userId: "testuser123",
+          title: "Newest Doc",
+          fileName: "newest.pdf",
+          fileSize: 2048,
+          pageCount: 3,
+          status: "ready",
+          createdAt: { toDate: () => new Date("2026-01-10T10:00:00Z") },
+          updatedAt: { toDate: () => new Date("2026-01-10T12:00:00Z") },
+        },
+        {
+          id: "doc-old",
+          userId: "testuser123",
+          title: "Older Doc",
+          fileName: "older.pdf",
+          fileSize: 1024,
+          pageCount: 1,
+          status: "error",
+          errorMessage: "Processing failed",
+          createdAt: { toDate: () => new Date("2026-01-05T09:00:00Z") },
+          updatedAt: { toDate: () => new Date("2026-01-05T09:30:00Z") },
+        },
+      ];
+
+      const mockQuery = {
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        get: jest.fn<() => Promise<any>>().mockResolvedValue({
+          docs: mockDocs.map((doc) => ({
+            id: doc.id,
+            data: () => doc,
+          })),
+        }),
+      };
+
+      const mockCollection = {
+        where: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      firebaseMocks.mockFirestore.collection.mockReturnValue(mockCollection);
+
+      const response = await request(app)
+        .get("/api/v1/documents")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(mockCollection.where).toHaveBeenCalledWith(
+        "userId",
+        "==",
+        "testuser123",
+      );
+      expect(mockQuery.orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(mockQuery.limit).toHaveBeenCalledWith(20);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data[0].id).toBe("doc-new");
+      expect(response.body.data[1].id).toBe("doc-old");
+      expect(response.body.data[1].errorMessage).toBe("Processing failed");
+      expect(response.body.meta.count).toBe(2);
+      expect(response.body.meta).toHaveProperty("timestamp");
+    });
+
+    it("should return empty data array when no documents exist (AC5)", async () => {
+      const mockQuery = {
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        get: jest.fn<() => Promise<any>>().mockResolvedValue({ docs: [] }),
+      };
+
+      const mockCollection = {
+        where: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      firebaseMocks.mockFirestore.collection.mockReturnValue(mockCollection);
+
+      const response = await request(app)
+        .get("/api/v1/documents")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toEqual([]);
+      expect(response.body.meta.count).toBe(0);
+      expect(response.body.meta).toHaveProperty("timestamp");
+    });
+  });
+
   describe("Concurrent Upload Handling (AC7)", () => {
     it("should handle multiple simultaneous uploads independently", async () => {
       const uploadPromises = [
