@@ -13,6 +13,7 @@
 
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+// @ts-ignore
 import { PDFParse } from "pdf-parse";
 import { createEmbeddingModel } from "../config/llm";
 import { getStorageInstance } from "../config/storage";
@@ -393,17 +394,20 @@ export class EmbeddingService {
    * @returns Extracted text structure
    */
   private async extractFromPDF(storagePath: string): Promise<ExtractedText> {
+    let parser: any = null; // Use any to avoid type issues with differing versions
+
     try {
       // Download PDF from Firebase Storage
       const bucket = getStorageInstance().bucket();
       const file = bucket.file(storagePath);
       const [buffer] = await file.download();
 
-      // Extract text using pdf-parse library
-      const parser = new PDFParse(buffer);
+      // Extract text using pdf-parse v2 library
+      // @ts-ignore
+      parser = new PDFParse({ data: buffer });
       const textData = await parser.getText();
 
-      // pdf-parse getText() returns { text: string }
+      // pdf-parse v2 getText() returns { text: string }
       // For now, treat as single page since page boundaries aren't reliably detectable
       // AC4: Page boundary preservation - simplified approach
       const pages = [
@@ -414,10 +418,13 @@ export class EmbeddingService {
       ];
 
       return {
-        pageCount: 1, // Simplified - will enhance in future iterations
+        pageCount: 1,
         pages,
       };
     } catch (error) {
+      // DEBUG LOGGING
+      console.error('[DEBUG] PDF Extraction Error:', error);
+
       if (error instanceof Error) {
         if (
           error.message.includes("Invalid PDF") ||
@@ -433,13 +440,17 @@ export class EmbeddingService {
 
         throw new AppError(
           "DOCUMENT_ACCESS_FAILED",
-          "Unable to access document file",
+          `Unable to access document file or parse content: ${error.message}`,
           500,
           { originalError: error.message },
         );
       }
 
       throw error;
+    } finally {
+        if (parser && typeof parser.destroy === 'function') {
+            await parser.destroy();
+        }
     }
   }
 

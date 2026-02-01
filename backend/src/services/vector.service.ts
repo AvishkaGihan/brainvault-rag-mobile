@@ -24,11 +24,11 @@ export interface UpsertDocumentEmbeddingsParams {
 }
 
 interface PineconeIndex {
-  upsert: (params: {
-    vectors: VectorStorageRequest[];
-    namespace?: string;
-  }) => Promise<unknown>;
-  delete?: (params: { ids: string[]; namespace?: string }) => Promise<unknown>;
+  namespace: (ns: string) => {
+    upsert: (vectors: VectorStorageRequest[]) => Promise<unknown>;
+    deleteMany: (ids: string[]) => Promise<unknown>;
+  };
+  upsert: (vectors: VectorStorageRequest[]) => Promise<unknown>;
 }
 
 export class VectorService {
@@ -38,7 +38,7 @@ export class VectorService {
   private readonly baseBackoffMs = 500;
 
   constructor(
-    private readonly pineconeIndex: PineconeIndex | undefined = index,
+    private readonly pineconeIndex: PineconeIndex | undefined = index as any,
   ) {}
 
   /**
@@ -206,10 +206,7 @@ export class VectorService {
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        await this.pineconeIndex?.upsert({
-          vectors: batch,
-          namespace: userId,
-        });
+        await this.pineconeIndex?.namespace(userId).upsert(batch);
 
         logger.info("Pinecone upsert batch completed", {
           userId,
@@ -222,6 +219,12 @@ export class VectorService {
         return;
       } catch (error) {
         lastError = error;
+
+        // Enhanced Debug Logging
+        console.error(`[DEBUG] Pinecone Upsert Error (Attempt ${attempt}):`, error);
+        if (typeof error === 'object' && error !== null && 'cause' in error) {
+            console.error('[DEBUG] Error Cause:', (error as any).cause);
+        }
 
         if (this.isRateLimitError(error) && attempt < this.maxRetries) {
           const delayMs = this.calculateBackoff(attempt);
@@ -273,7 +276,7 @@ export class VectorService {
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        if (!this.pineconeIndex?.delete) {
+        if (!this.pineconeIndex?.namespace(userId).deleteMany) {
           logger.warn("Pinecone delete API unavailable - skipping batch", {
             userId,
             batchIndex,
@@ -282,10 +285,7 @@ export class VectorService {
           return;
         }
 
-        await this.pineconeIndex.delete({
-          ids: batch,
-          namespace: userId,
-        });
+        await this.pineconeIndex.namespace(userId).deleteMany(batch);
 
         logger.info("Pinecone delete batch completed", {
           userId,
@@ -296,6 +296,7 @@ export class VectorService {
 
         return;
       } catch (error) {
+
         lastError = error;
 
         if (this.isRateLimitError(error) && attempt < this.maxRetries) {

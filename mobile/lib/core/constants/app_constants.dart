@@ -1,7 +1,7 @@
 /// App-wide constants
 class AppConstants {
   // API Configuration
-  static const String apiBaseUrl = 'http://localhost:3001/api';
+  static const String apiBaseUrl = 'http://10.0.2.2:3000/api';
 
   // Firebase
   static const String projectName = 'brainvault';
