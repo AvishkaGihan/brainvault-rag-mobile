@@ -25,6 +25,7 @@ class ChatInput extends StatelessWidget {
               key: const Key('chat_input_field'),
               controller: controller,
               onChanged: onChanged,
+              onSubmitted: (_) => onSend(),
               textInputAction: TextInputAction.send,
               decoration: const InputDecoration(hintText: 'Ask a question...'),
             ),

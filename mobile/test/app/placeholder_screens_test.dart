@@ -61,7 +61,14 @@ void main() {
     });
 
     testWidgets('ChatScreen without documentId', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            documentsProvider.overrideWith(() => TestDocumentsNotifier()),
+          ],
+          child: const MaterialApp(home: ChatScreen()),
+        ),
+      );
 
       expect(find.byType(ChatScreen), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
@@ -72,7 +79,12 @@ void main() {
     testWidgets('ChatScreen with documentId', (WidgetTester tester) async {
       const testDocId = 'doc-123';
       await tester.pumpWidget(
-        const MaterialApp(home: ChatScreen(documentId: testDocId)),
+        ProviderScope(
+          overrides: [
+            documentsProvider.overrideWith(() => TestDocumentsNotifier()),
+          ],
+          child: const MaterialApp(home: ChatScreen(documentId: testDocId)),
+        ),
       );
 
       expect(find.byType(ChatScreen), findsOneWidget);
@@ -85,7 +97,12 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        const MaterialApp(home: ChatScreen(documentId: '')),
+        ProviderScope(
+          overrides: [
+            documentsProvider.overrideWith(() => TestDocumentsNotifier()),
+          ],
+          child: const MaterialApp(home: ChatScreen(documentId: '')),
+        ),
       );
 
       expect(find.byType(ChatScreen), findsOneWidget);
