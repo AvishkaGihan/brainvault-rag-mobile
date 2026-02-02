@@ -6,12 +6,14 @@ import 'package:brainvault/features/documents/presentation/providers/upload_prov
 import 'package:brainvault/features/documents/presentation/screens/documents_screen.dart';
 import 'package:brainvault/features/documents/presentation/widgets/document_card.dart';
 import 'package:brainvault/features/documents/presentation/widgets/empty_documents.dart';
+import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
 import 'package:brainvault/core/error/failures.dart';
 import 'package:brainvault/shared/widgets/skeleton_loader.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 class TestDocumentsNotifier extends DocumentsNotifier {
   final Future<List<Document>> Function() buildFn;
@@ -44,6 +46,58 @@ class TestOfflineBannerNotifier extends DocumentsOfflineBannerNotifier {
 
   @override
   bool build() => initialValue;
+}
+
+GoRouter _createTestRouter() {
+  return GoRouter(
+    initialLocation: '/home',
+    routes: [
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/chat/:documentId',
+        builder: (context, state) {
+          final documentId = state.pathParameters['documentId'];
+          final extra = state.extra;
+          String? documentTitle;
+          if (extra is Map) {
+            final value = extra['title'];
+            if (value is String && value.trim().isNotEmpty) {
+              documentTitle = value;
+            }
+          }
+          return ChatScreen(
+            documentId: documentId,
+            documentTitle: documentTitle,
+          );
+        },
+      ),
+    ],
+  );
+}
+
+Future<void> _pumpHomeScreen(
+  WidgetTester tester, {
+  required GoRouter router,
+  required List<Document> documents,
+  bool offline = false,
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        documentsProvider.overrideWith(
+          () => TestDocumentsNotifier(() async => documents),
+        ),
+        fileSelectionProvider.overrideWith(() => FakeFileSelectionNotifier()),
+        if (offline)
+          documentsOfflineBannerProvider.overrideWith(
+            () => TestOfflineBannerNotifier(true),
+          ),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -240,8 +294,11 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
-    await tester.pump(const Duration(seconds: 1));
+    // Find the ScrollView inside RefreshIndicator and pull down
+    await tester.drag(
+      find.byType(RefreshIndicator).first,
+      const Offset(0, 200),
+    );
     await tester.pumpAndSettle();
 
     expect(refreshCalled, isTrue);
@@ -281,8 +338,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
-      await tester.pump(const Duration(seconds: 1));
+      await tester.drag(
+        find.byType(RefreshIndicator).first,
+        const Offset(0, 200),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text("Couldn't refresh. Please try again."), findsOneWidget);
@@ -322,8 +381,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.drag(
+      find.byType(RefreshIndicator).first,
+      const Offset(0, 200),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Success Doc'), findsOneWidget);
@@ -357,12 +418,10 @@ void main() {
     expect(find.byType(EmptyDocuments), findsOneWidget);
 
     // Perform pull-to-refresh on empty list
-    await tester.fling(
-      find.byType(CustomScrollView),
-      const Offset(0, 500),
-      1000,
+    await tester.drag(
+      find.byType(RefreshIndicator).first,
+      const Offset(0, 200),
     );
-    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(refreshCalled, isTrue);
@@ -413,8 +472,10 @@ void main() {
     expect(find.text('Offline Refresh Doc'), findsOneWidget);
 
     // Perform pull-to-refresh
-    await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.drag(
+      find.byType(RefreshIndicator).first,
+      const Offset(0, 200),
+    );
     await tester.pumpAndSettle();
 
     expect(refreshCalled, isTrue);
@@ -422,5 +483,117 @@ void main() {
     expect(find.text('Offline - showing cached data'), findsOneWidget);
     expect(find.text('Offline Refresh Doc'), findsOneWidget);
     expect(find.text("Couldn't refresh. Please try again."), findsOneWidget);
+  });
+
+  testWidgets('should navigate to chat when ready document tapped', (
+    tester,
+  ) async {
+    final documents = [
+      Document(
+        id: 'doc-ready',
+        title: 'Ready Doc',
+        fileName: 'ready.pdf',
+        fileSize: 1024,
+        status: DocumentStatus.ready,
+        createdAt: DateTime(2026, 2, 1),
+      ),
+    ];
+
+    final router = _createTestRouter();
+
+    await _pumpHomeScreen(tester, router: router, documents: documents);
+
+    await tester.tap(find.text('Ready Doc'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChatScreen), findsOneWidget);
+    expect(find.text('Ready Doc'), findsOneWidget);
+  });
+
+  testWidgets(
+    'should show processing SnackBar when processing document tapped',
+    (tester) async {
+      final documents = [
+        Document(
+          id: 'doc-processing',
+          title: 'Processing Doc',
+          fileName: 'processing.pdf',
+          fileSize: 2048,
+          status: DocumentStatus.processing,
+          createdAt: DateTime(2026, 2, 1),
+        ),
+      ];
+
+      final router = _createTestRouter();
+
+      await _pumpHomeScreen(tester, router: router, documents: documents);
+
+      await tester.tap(find.text('Processing Doc'));
+      await tester.pump();
+
+      expect(
+        find.text('This document is still processing. Please wait.'),
+        findsOneWidget,
+      );
+      expect(find.byType(ChatScreen), findsNothing);
+    },
+  );
+
+  testWidgets('should show error dialog when failed document tapped', (
+    tester,
+  ) async {
+    final documents = [
+      Document(
+        id: 'doc-error',
+        title: 'Error Doc',
+        fileName: 'error.pdf',
+        fileSize: 4096,
+        status: DocumentStatus.failed,
+        createdAt: DateTime(2026, 2, 1),
+        errorMessage: 'Processing failed on server.',
+      ),
+    ];
+
+    final router = _createTestRouter();
+
+    await _pumpHomeScreen(tester, router: router, documents: documents);
+
+    await tester.tap(find.text('Error Doc'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Document processing failed'), findsOneWidget);
+    expect(find.text('Processing failed on server.'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+  });
+
+  testWidgets('should block navigation when offline banner is shown', (
+    tester,
+  ) async {
+    final documents = [
+      Document(
+        id: 'doc-offline',
+        title: 'Offline Doc',
+        fileName: 'offline.pdf',
+        fileSize: 1024,
+        status: DocumentStatus.ready,
+        createdAt: DateTime(2026, 2, 1),
+      ),
+    ];
+
+    final router = _createTestRouter();
+
+    await _pumpHomeScreen(
+      tester,
+      router: router,
+      documents: documents,
+      offline: true,
+    );
+
+    await tester.tap(find.text('Offline Doc'));
+    await tester.pump();
+
+    expect(find.text('Requires internet connection'), findsOneWidget);
+    expect(find.byType(ChatScreen), findsNothing);
   });
 }

@@ -5,8 +5,9 @@ import 'document_card.dart';
 /// Document list widget
 class DocumentList extends StatelessWidget {
   final List<Document> documents;
+  final ValueChanged<Document>? onDocumentTap;
 
-  const DocumentList({super.key, required this.documents});
+  const DocumentList({super.key, required this.documents, this.onDocumentTap});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +19,12 @@ class DocumentList extends StatelessWidget {
         final document = documents[index];
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: DocumentCard(document: document),
+          child: DocumentCard(
+            document: document,
+            onTap: onDocumentTap == null
+                ? null
+                : () => onDocumentTap!(document),
+          ),
         );
       },
     );

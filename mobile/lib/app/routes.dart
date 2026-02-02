@@ -107,7 +107,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/chat/:documentId',
         builder: (context, state) {
           final documentId = state.pathParameters['documentId'];
-          return ChatScreen(documentId: documentId);
+          final extra = state.extra;
+          String? documentTitle;
+          if (extra is Map) {
+            final title = extra['title'];
+            if (title is String && title.trim().isNotEmpty) {
+              documentTitle = title;
+            }
+          }
+          return ChatScreen(
+            documentId: documentId,
+            documentTitle: documentTitle,
+          );
         },
       ),
       GoRoute(
