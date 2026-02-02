@@ -63,6 +63,42 @@ class DocumentsNotifier extends AsyncNotifier<List<Document>> {
     state = await AsyncValue.guard(() async => _fetchAndCache());
   }
 
+  /// Refresh documents for pull-to-refresh gesture.
+  ///
+  /// Returns the failure if refresh fails, null on success.
+  /// This separate method allows the UI to surface failures via SnackBar
+  /// while preserving cached data on screen, as required by AC #4.
+  ///
+  /// Prevents concurrent refreshes via [_isRefreshing] guard.
+  Future<Failure?> refreshForPullToRefresh() async {
+    if (_isRefreshing) return null; // Prevent concurrent refreshes
+    _isRefreshing = true;
+
+    try {
+      final useCase = ref.read(getDocumentsUseCaseProvider);
+      final documents = await useCase();
+      if (!ref.mounted) {
+        return null;
+      }
+      state = AsyncData(documents);
+      _setOfflineBanner(false);
+      await ref.read(documentCacheProvider).write(documents);
+      return null;
+    } on Failure catch (failure) {
+      if (failure is ConnectionFailure || failure is TimeoutFailure) {
+        _setOfflineBanner(true);
+      } else {
+        _setOfflineBanner(false);
+      }
+      return failure;
+    } catch (_) {
+      _setOfflineBanner(false);
+      return const UnknownFailure();
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
   Future<List<Document>> _fetchAndCache() async {
     final useCase = ref.read(getDocumentsUseCaseProvider);
     final documents = await useCase();

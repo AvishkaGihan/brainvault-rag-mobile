@@ -5,19 +5,26 @@ import 'document_card.dart';
 /// Document list widget
 class DocumentList extends StatelessWidget {
   final List<Document> documents;
+  final ValueChanged<Document>? onDocumentTap;
 
-  const DocumentList({super.key, required this.documents});
+  const DocumentList({super.key, required this.documents, this.onDocumentTap});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: documents.length,
       itemBuilder: (context, index) {
         final document = documents[index];
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: DocumentCard(document: document),
+          child: DocumentCard(
+            document: document,
+            onTap: onDocumentTap == null
+                ? null
+                : () => onDocumentTap!(document),
+          ),
         );
       },
     );

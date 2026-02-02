@@ -4,8 +4,9 @@ import '../../domain/entities/document.dart';
 /// Document card widget for list display
 class DocumentCard extends StatelessWidget {
   final Document document;
+  final VoidCallback? onTap;
 
-  const DocumentCard({super.key, required this.document});
+  const DocumentCard({super.key, required this.document, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +17,7 @@ class DocumentCard extends StatelessWidget {
 
     return Card(
       child: ListTile(
+        onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(
           document.title.isNotEmpty ? document.title : document.fileName,
@@ -33,13 +35,23 @@ class DocumentCard extends StatelessWidget {
             ],
           ),
         ),
-        trailing: Chip(
-          label: Text(statusInfo.label),
-          backgroundColor: statusInfo.background,
-          labelStyle: theme.textTheme.labelMedium?.copyWith(
-            color: statusInfo.foreground,
-          ),
-          visualDensity: VisualDensity.compact,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Chip(
+              label: Text(statusInfo.label),
+              backgroundColor: statusInfo.background,
+              labelStyle: theme.textTheme.labelMedium?.copyWith(
+                color: statusInfo.foreground,
+              ),
+              visualDensity: VisualDensity.compact,
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
         minLeadingWidth: 0,
       ),

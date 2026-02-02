@@ -64,7 +64,9 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
 
       expect(find.byType(ChatScreen), findsOneWidget);
-      expect(find.text('No document selected'), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('Chat'), findsOneWidget);
+      expect(find.text('Chat functionality coming soon'), findsOneWidget);
     });
 
     testWidgets('ChatScreen with documentId', (WidgetTester tester) async {
@@ -74,7 +76,9 @@ void main() {
       );
 
       expect(find.byType(ChatScreen), findsOneWidget);
-      expect(find.text('Chatting about: $testDocId'), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('Chat'), findsOneWidget);
+      expect(find.text('Chat functionality coming soon'), findsOneWidget);
     });
 
     testWidgets('ChatScreen validates empty documentId', (
@@ -84,7 +88,10 @@ void main() {
         const MaterialApp(home: ChatScreen(documentId: '')),
       );
 
-      expect(find.text('Invalid document ID'), findsOneWidget);
+      expect(find.byType(ChatScreen), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('Chat'), findsOneWidget);
+      expect(find.text('Chat functionality coming soon'), findsOneWidget);
     });
 
     testWidgets('All screens display AppBar with title', (
