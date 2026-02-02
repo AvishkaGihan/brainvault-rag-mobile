@@ -182,9 +182,9 @@ export class DocumentService {
       throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
     }
 
-    const updatedAt = this.toIsoString(
-      document.updatedAt || document.createdAt,
-    );
+    const updatedAt =
+      this.toIsoString(document.updatedAt || document.createdAt) ||
+      new Date().toISOString();
 
     return {
       documentId,
@@ -208,8 +208,19 @@ export class DocumentService {
 
     return snapshot.docs.map((doc) => {
       const data = doc.data() as Document;
-      const createdAt = this.toIsoString(data.createdAt);
-      const updatedAt = this.toIsoString(data.updatedAt);
+      const createdAt =
+        this.toIsoString(data.createdAt) || new Date().toISOString();
+      const updatedAt =
+        this.toIsoString(data.updatedAt) || new Date().toISOString();
+      const indexedAt = data.indexedAt
+        ? this.toIsoString(data.indexedAt)
+        : null;
+      const vectorCount =
+        typeof data.vectorCount === "number" ? data.vectorCount : null;
+      const extractionDuration =
+        typeof data.extractionDuration === "number"
+          ? data.extractionDuration
+          : null;
 
       return {
         id: data.id ?? doc.id,
@@ -222,6 +233,9 @@ export class DocumentService {
         updatedAt,
         errorMessage:
           data.status === "error" ? (data.errorMessage ?? null) : null,
+        indexedAt,
+        vectorCount,
+        extractionDuration,
       };
     });
   }
@@ -347,7 +361,7 @@ export class DocumentService {
     return { documentId, cancelled: true };
   }
 
-  private toIsoString(timestamp?: unknown): string {
+  private toIsoString(timestamp?: unknown): string | null {
     if (
       timestamp &&
       typeof (timestamp as { toDate?: unknown }).toDate === "function"
@@ -355,7 +369,7 @@ export class DocumentService {
       return (timestamp as { toDate: () => Date }).toDate().toISOString();
     }
 
-    return new Date().toISOString();
+    return null;
   }
 
   /**
@@ -397,7 +411,7 @@ export class DocumentService {
         throw new AppError("DOCUMENT_NOT_FOUND", "Document not found", 404);
       }
 
-      const document = docSnap.data();
+      const document = docSnap.data() as Document | undefined;
       if (!document?.userId) {
         throw new AppError("INVALID_DOCUMENT", "Document userId missing", 400);
       }
@@ -410,6 +424,7 @@ export class DocumentService {
         return;
       }
 
+      const extractionStartTime = Date.now();
       const chunkedDocument = await this.embeddingService.chunkDocumentText(
         extractedText,
         documentId,
@@ -543,9 +558,11 @@ export class DocumentService {
         return;
       }
 
+      const extractionDurationMs = Date.now() - extractionStartTime;
       await this.db.collection("documents").doc(documentId).update({
         status: "ready",
         vectorCount: embeddings.length,
+        extractionDuration: extractionDurationMs,
         indexedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });

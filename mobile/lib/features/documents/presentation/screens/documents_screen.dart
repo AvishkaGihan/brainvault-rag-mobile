@@ -10,6 +10,7 @@ import '../../domain/entities/document.dart';
 import '../providers/documents_provider.dart';
 import '../widgets/empty_documents.dart';
 import '../widgets/document_list.dart';
+import '../widgets/document_info_bottom_sheet.dart';
 import '../widgets/upload_fab.dart';
 import '../widgets/upload_options_bottom_sheet.dart';
 import '../providers/upload_provider.dart';
@@ -195,6 +196,18 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  void _handleDocumentInfo(BuildContext context, Document document) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DocumentInfoBottomSheet(document: document),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final documentsState = ref.watch(documentsProvider);
@@ -277,6 +290,8 @@ class HomeScreen extends ConsumerWidget {
                     document,
                     showOfflineBanner,
                   ),
+                  onDocumentInfo: (document) =>
+                      _handleDocumentInfo(context, document),
                 );
 
           return Column(

@@ -6,12 +6,14 @@ class DocumentCard extends StatelessWidget {
   final Document document;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onInfo;
 
   const DocumentCard({
     super.key,
     required this.document,
     this.onTap,
     this.onDelete,
+    this.onInfo,
   });
 
   @override
@@ -53,6 +55,18 @@ class DocumentCard extends StatelessWidget {
               visualDensity: VisualDensity.compact,
             ),
             const SizedBox(width: 4),
+            // Info button with 48dp minimum touch target
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                icon: const Icon(Icons.info_outline),
+                onPressed: onInfo,
+                tooltip: 'View details',
+                iconSize: 24,
+                padding: EdgeInsets.zero,
+              ),
+            ),
             // Delete button with 48dp minimum touch target
             SizedBox(
               width: 48,

@@ -4,6 +4,11 @@ class Document {
   final String title;
   final String fileName;
   final int fileSize; // in bytes
+  final int? pageCount;
+  final int?
+  vectorCount; // Number of chunks/vectors created (maps from backend)
+  final DateTime? indexedAt;
+  final int? extractionDurationMs;
   final DocumentStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -14,6 +19,10 @@ class Document {
     required this.title,
     required this.fileName,
     required this.fileSize,
+    this.pageCount,
+    this.vectorCount,
+    this.indexedAt,
+    this.extractionDurationMs,
     required this.status,
     required this.createdAt,
     this.updatedAt,
@@ -26,6 +35,10 @@ class Document {
     String? title,
     String? fileName,
     int? fileSize,
+    int? pageCount,
+    int? vectorCount,
+    DateTime? indexedAt,
+    int? extractionDurationMs,
     DocumentStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -36,6 +49,10 @@ class Document {
       title: title ?? this.title,
       fileName: fileName ?? this.fileName,
       fileSize: fileSize ?? this.fileSize,
+      pageCount: pageCount ?? this.pageCount,
+      vectorCount: vectorCount ?? this.vectorCount,
+      indexedAt: indexedAt ?? this.indexedAt,
+      extractionDurationMs: extractionDurationMs ?? this.extractionDurationMs,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -52,6 +69,10 @@ class Document {
           title == other.title &&
           fileName == other.fileName &&
           fileSize == other.fileSize &&
+          pageCount == other.pageCount &&
+          vectorCount == other.vectorCount &&
+          indexedAt == other.indexedAt &&
+          extractionDurationMs == other.extractionDurationMs &&
           status == other.status &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
@@ -63,6 +84,10 @@ class Document {
       title.hashCode ^
       fileName.hashCode ^
       fileSize.hashCode ^
+      pageCount.hashCode ^
+      vectorCount.hashCode ^
+      indexedAt.hashCode ^
+      extractionDurationMs.hashCode ^
       status.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^

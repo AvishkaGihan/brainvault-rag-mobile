@@ -169,6 +169,124 @@ void main() {
     expect(find.text('Quarterly Report'), findsOneWidget);
   });
 
+  testWidgets('renders info icon on document cards', (tester) async {
+    final documents = [
+      Document(
+        id: 'doc-info',
+        title: 'Info Doc',
+        fileName: 'info.pdf',
+        fileSize: 1024,
+        status: DocumentStatus.ready,
+        createdAt: DateTime(2026, 1, 8),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentsProvider.overrideWith(
+            () => TestDocumentsNotifier(() async => documents),
+          ),
+          fileSelectionProvider.overrideWith(() => FakeFileSelectionNotifier()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+  });
+
+  testWidgets('opens document details bottom sheet on info tap', (
+    tester,
+  ) async {
+    final document = Document(
+      id: 'doc-details',
+      title: 'Annual Summary',
+      fileName: 'summary.pdf',
+      fileSize: 24576,
+      pageCount: 12,
+      vectorCount: 34,
+      indexedAt: DateTime(2026, 1, 5, 10, 32, 5),
+      extractionDurationMs: 2100,
+      status: DocumentStatus.ready,
+      createdAt: DateTime(2026, 1, 5, 10, 30),
+    );
+
+    await _pumpHomeScreen(
+      tester,
+      router: _createTestRouter(),
+      documents: [document],
+    );
+
+    await tester.tap(find.byIcon(Icons.info_outline));
+    await tester.pumpAndSettle();
+
+    final bottomSheet = find.byType(BottomSheet);
+
+    expect(bottomSheet, findsOneWidget);
+    expect(find.text('Document Details'), findsOneWidget);
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('Annual Summary')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('summary.pdf')),
+      findsOneWidget,
+    );
+    expect(find.text('File size'), findsOneWidget);
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('24 KB')),
+      findsOneWidget,
+    );
+    expect(find.text('Page count'), findsOneWidget);
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('12')),
+      findsOneWidget,
+    );
+    expect(find.text('Upload date'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: bottomSheet,
+        matching: find.text('Jan 5, 2026 • 10:30'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Processing duration'), findsOneWidget);
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('2m 5s')),
+      findsOneWidget,
+    );
+    expect(find.text('Number of chunks'), findsOneWidget);
+    expect(
+      find.descendant(of: bottomSheet, matching: find.text('34')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows placeholders for processing documents', (tester) async {
+    final document = Document(
+      id: 'doc-processing',
+      title: 'Processing Doc',
+      fileName: 'processing.pdf',
+      fileSize: 4096,
+      status: DocumentStatus.processing,
+      createdAt: DateTime(2026, 1, 6, 9, 15),
+    );
+
+    await _pumpHomeScreen(
+      tester,
+      router: _createTestRouter(),
+      documents: [document],
+    );
+
+    await tester.tap(find.byIcon(Icons.info_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Processing…'), findsWidgets);
+  });
+
   testWidgets('cached documents render without skeleton loader', (
     tester,
   ) async {

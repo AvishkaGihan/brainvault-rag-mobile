@@ -10,6 +10,10 @@ class DocumentModel extends Document {
     required super.title,
     required super.fileName,
     required super.fileSize,
+    super.pageCount,
+    super.vectorCount,
+    super.indexedAt,
+    super.extractionDurationMs,
     required super.status,
     required super.createdAt,
     super.updatedAt,
@@ -36,6 +40,12 @@ class DocumentModel extends Document {
       title: json['title'] as String,
       fileName: json['fileName'] as String,
       fileSize: json['fileSize'] as int,
+      pageCount: _toInt(json['pageCount']),
+      vectorCount: _toInt(json['vectorCount']),
+      indexedAt: json['indexedAt'] != null
+          ? DateTime.parse(json['indexedAt'] as String)
+          : null,
+      extractionDurationMs: _toInt(json['extractionDuration']),
       status: _statusFromString(json['status'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] != null
@@ -52,11 +62,25 @@ class DocumentModel extends Document {
       'title': title,
       'fileName': fileName,
       'fileSize': fileSize,
+      'pageCount': pageCount,
+      'vectorCount': vectorCount,
+      'indexedAt': indexedAt?.toIso8601String(),
+      'extractionDuration': extractionDurationMs,
       'status': _statusToString(status),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'errorMessage': errorMessage,
     };
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return null;
   }
 
   /// Helper: Convert status enum to string
