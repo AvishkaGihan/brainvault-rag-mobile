@@ -7,12 +7,14 @@ class DocumentList extends StatelessWidget {
   final List<Document> documents;
   final ValueChanged<Document>? onDocumentTap;
   final ValueChanged<Document>? onDocumentDelete;
+  final ValueChanged<Document>? onDocumentInfo;
 
   const DocumentList({
     super.key,
     required this.documents,
     this.onDocumentTap,
     this.onDocumentDelete,
+    this.onDocumentInfo,
   });
 
   @override
@@ -33,6 +35,9 @@ class DocumentList extends StatelessWidget {
             onDelete: onDocumentDelete == null
                 ? null
                 : () => onDocumentDelete!(document),
+            onInfo: onDocumentInfo == null
+                ? null
+                : () => onDocumentInfo!(document),
           ),
         );
       },

@@ -405,6 +405,9 @@ describe("Document Routes Integration", () => {
           fileSize: 2048,
           pageCount: 3,
           status: "ready",
+          extractionDuration: 1234,
+          vectorCount: 12,
+          indexedAt: { toDate: () => new Date("2026-01-10T11:30:00Z") },
           createdAt: { toDate: () => new Date("2026-01-10T10:00:00Z") },
           updatedAt: { toDate: () => new Date("2026-01-10T12:00:00Z") },
         },
@@ -457,6 +460,12 @@ describe("Document Routes Integration", () => {
       expect(response.body.data[0].id).toBe("doc-new");
       expect(response.body.data[1].id).toBe("doc-old");
       expect(response.body.data[1].errorMessage).toBe("Processing failed");
+      expect(response.body.data[0].extractionDuration).toBe(1234);
+      expect(response.body.data[0].vectorCount).toBe(12);
+      expect(response.body.data[0].indexedAt).toBe("2026-01-10T11:30:00.000Z");
+      expect(response.body.data[1].extractionDuration).toBeNull();
+      expect(response.body.data[1].vectorCount).toBeNull();
+      expect(response.body.data[1].indexedAt).toBeNull();
       expect(response.body.meta.count).toBe(2);
       expect(response.body.meta).toHaveProperty("timestamp");
     });

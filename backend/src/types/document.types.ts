@@ -24,6 +24,8 @@ export interface Document {
   cancelRequestedAt?: Timestamp; // Cancellation intent timestamp
   extractedAt?: Timestamp; // When extraction completed
   extractionDuration?: number; // Processing time in ms
+  indexedAt?: Timestamp; // When embeddings were indexed
+  vectorCount?: number; // Number of vectors/chunks stored
   textPreview?: string; // First 200 chars for display
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -88,6 +90,9 @@ export interface DocumentListItem {
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
   errorMessage?: string | null;
+  indexedAt?: string | null; // ISO 8601 string
+  vectorCount?: number | null;
+  extractionDuration?: number | null; // Processing time in ms
 }
 
 /**
