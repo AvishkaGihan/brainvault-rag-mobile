@@ -66,7 +66,7 @@ void main() {
       expect(find.byType(ChatScreen), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Chat'), findsOneWidget);
-      expect(find.text('Chat functionality coming soon'), findsOneWidget);
+      expect(find.byKey(const Key('chat_input_field')), findsOneWidget);
     });
 
     testWidgets('ChatScreen with documentId', (WidgetTester tester) async {
@@ -78,7 +78,7 @@ void main() {
       expect(find.byType(ChatScreen), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Chat'), findsOneWidget);
-      expect(find.text('Chat functionality coming soon'), findsOneWidget);
+      expect(find.byKey(const Key('chat_input_field')), findsOneWidget);
     });
 
     testWidgets('ChatScreen validates empty documentId', (
@@ -91,7 +91,7 @@ void main() {
       expect(find.byType(ChatScreen), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Chat'), findsOneWidget);
-      expect(find.text('Chat functionality coming soon'), findsOneWidget);
+      expect(find.byKey(const Key('chat_input_field')), findsOneWidget);
     });
 
     testWidgets('All screens display AppBar with title', (
