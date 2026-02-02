@@ -17,7 +17,7 @@ class ChatMessageBubble extends StatelessWidget {
     final textColor = isUser
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSurfaceVariant;
-    final timeColor = textColor.withOpacity(0.7);
+    final timeColor = textColor.withValues(alpha: 0.7);
     final dateTime = message.createdAt ?? DateTime.now();
     final timeString = MaterialLocalizations.of(
       context,
