@@ -47,4 +47,12 @@ router.post("/text", documentController.createTextDocument);
  */
 router.get("/:documentId/status", documentController.getDocumentStatus);
 
+/**
+ * DELETE /api/v1/documents/:documentId
+ * Delete document and all associated data
+ * Story 4.5: Document Deletion
+ * AC8: Ownership validation, AC9: Complete cleanup
+ */
+router.delete("/:documentId", documentController.deleteDocument);
+
 export { router as documentRoutes };

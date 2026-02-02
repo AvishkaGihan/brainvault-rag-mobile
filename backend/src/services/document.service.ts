@@ -699,4 +699,150 @@ export class DocumentService {
     }
     return batches;
   }
+
+  /**
+   * Delete document and all associated data
+   * Story 4.5: Document Deletion
+   * AC8: Verify ownership before delete (return 403 if not owner)
+   * AC9: Delete from Firestore (document + chats), Pinecone (vectors), and Storage (file)
+   * AC10: Handle concurrent deletes (document may already be deleted)
+   * AC11: Log deletion for audit trail
+   *
+   * @param userId - User's Firebase UID from auth middleware
+   * @param documentId - Document ID to delete
+   * @returns Success response with message
+   */
+  async deleteDocument(
+    userId: string,
+    documentId: string,
+  ): Promise<{ message: string }> {
+    // AC8: Fetch document and verify ownership
+    const docRef = this.db.collection("documents").doc(documentId);
+    const docSnapshot = await docRef.get();
+
+    // AC10: Check if document exists
+    if (!docSnapshot.exists) {
+      throw new AppError(
+        "DOCUMENT_NOT_FOUND",
+        "Document not found or already deleted",
+        404,
+      );
+    }
+
+    const document = docSnapshot.data() as Document;
+
+    // AC8: CRITICAL - Verify ownership (return 403 not 404 for security)
+    if (document.userId !== userId) {
+      logger.warn("Unauthorized delete attempt", {
+        userId,
+        documentId,
+        ownerId: document.userId,
+      });
+      throw new AppError(
+        "UNAUTHORIZED",
+        "You do not have permission to delete this document",
+        403,
+      );
+    }
+
+    try {
+      // AC9: Delete from all data sources in a single batch operation where possible
+
+      // 1. Batch delete: document record + all chats
+      const writeBatch = this.db.batch();
+
+      // Delete the document itself
+      writeBatch.delete(docRef);
+
+      // Delete all chat records (if Story 5.8 has created chats collection)
+      // Note: chats collection doesn't exist yet, but add the pattern for future-proofing
+      try {
+        const chatsSnapshot = await docRef.collection("chats").get();
+        chatsSnapshot.docs.forEach((chatDoc) => {
+          writeBatch.delete(chatDoc.ref);
+        });
+      } catch (error) {
+        logger.warn("Could not query chats collection (may not exist yet)", {
+          documentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      await writeBatch.commit();
+
+      logger.info("Deleted Firestore document and chats", {
+        userId,
+        documentId,
+      });
+
+      // 2. Delete vectors from Pinecone (non-blocking - errors are logged)
+      try {
+        await this.vectorService.deleteDocumentVectors({
+          userId,
+          documentId,
+        });
+        logger.info("Deleted vectors from Pinecone", {
+          userId,
+          documentId,
+        });
+      } catch (error) {
+        logger.warn("Failed to delete vectors from Pinecone", {
+          userId,
+          documentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Non-blocking - continue with Storage deletion
+      }
+
+      // 3. Delete file from Firebase Storage (non-blocking - errors are logged)
+      if (document.storagePath) {
+        try {
+          await deleteFromStorage(document.storagePath);
+          logger.info("Deleted file from Firebase Storage", {
+            userId,
+            documentId,
+            storagePath: document.storagePath,
+          });
+        } catch (error) {
+          logger.warn("Failed to delete file from Firebase Storage", {
+            userId,
+            documentId,
+            storagePath: document.storagePath,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Non-blocking - deletion is complete enough
+        }
+      }
+
+      // AC11: Log deletion audit trail (no PII)
+      logger.info("Document deletion completed", {
+        userId,
+        documentId,
+        documentTitle: document.title,
+        documentStatus: document.status,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        message: `Document deleted successfully`,
+      };
+    } catch (error) {
+      // If batch delete failed, re-throw with context
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      logger.error("Document deletion failed", {
+        userId,
+        documentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw new AppError(
+        "PROCESSING_FAILED",
+        "Failed to delete document. Please try again.",
+        500,
+      );
+    }
+  }
 }

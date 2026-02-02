@@ -202,4 +202,36 @@ export class DocumentController {
       next(error);
     }
   };
+
+  /**
+   * Handle document deletion
+   * Story 4.5: DELETE /api/v1/documents/:documentId
+   * AC8: Ownership validation, AC9: Complete cleanup
+   */
+  deleteDocument = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const userId = req.user!.uid;
+      const { documentId } = req.params;
+
+      const result = await this.documentService.deleteDocument(
+        userId,
+        documentId,
+      );
+
+      const timestamp = getCurrentTimestamp();
+      const response: ApiResponse<typeof result> = {
+        success: true,
+        data: result,
+        meta: { timestamp },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

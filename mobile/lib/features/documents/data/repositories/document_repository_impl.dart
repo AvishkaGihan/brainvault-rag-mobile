@@ -219,13 +219,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     }
   }
 
-  @override
-  Future<void> deleteDocument(String documentId) async {
-    // TODO: Implement in Story 4.5
-    // Stub: do nothing
-    return;
-  }
-
   Failure _mapUploadError(DioException error) {
     final responseData = error.response?.data;
     if (responseData is Map<String, dynamic>) {
@@ -286,6 +279,28 @@ class DocumentRepositoryImpl implements DocumentRepository {
         return const ConnectionFailure();
       default:
         return const ServerFailure();
+    }
+  }
+
+  @override
+  Future<void> deleteDocument(String documentId) async {
+    try {
+      await _remoteDataSource.deleteDocument(documentId);
+    } on DocumentFailure {
+      rethrow; // Re-throw domain failures as-is
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          throw const TimeoutFailure('Request timed out');
+        case DioExceptionType.connectionError:
+          throw const ConnectionFailure();
+        default:
+          throw const ServerFailure();
+      }
+    } catch (e) {
+      throw UnknownFailure('Failed to delete document: ${e.toString()}');
     }
   }
 }

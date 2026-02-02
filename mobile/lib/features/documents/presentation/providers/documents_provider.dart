@@ -140,6 +140,34 @@ class DocumentsNotifier extends AsyncNotifier<List<Document>> {
       notifier.set(value);
     }
   }
+
+  /// Delete a document by ID
+  /// Implements optimistic UI: removes from list immediately
+  /// Rolls back on error and throws failure
+  Future<void> deleteDocument(String documentId, Document document) async {
+    final current = state.value;
+    if (current == null) return;
+
+    // Optimistic UI: remove document from list immediately
+    final updatedList = current.where((doc) => doc.id != documentId).toList();
+    state = AsyncData(updatedList);
+
+    try {
+      final repository = ref.read(documentRepositoryProvider);
+      await repository.deleteDocument(documentId);
+
+      // Update cache with new list
+      await ref.read(documentCacheProvider).write(updatedList);
+    } on Failure {
+      // Rollback on error: restore the document to the list
+      state = AsyncData(current);
+      rethrow; // Re-throw to let UI handle error display
+    } catch (e) {
+      // Rollback on error
+      state = AsyncData(current);
+      rethrow;
+    }
+  }
 }
 
 /// Provider for DocumentsNotifier

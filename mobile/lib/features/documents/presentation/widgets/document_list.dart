@@ -6,8 +6,14 @@ import 'document_card.dart';
 class DocumentList extends StatelessWidget {
   final List<Document> documents;
   final ValueChanged<Document>? onDocumentTap;
+  final ValueChanged<Document>? onDocumentDelete;
 
-  const DocumentList({super.key, required this.documents, this.onDocumentTap});
+  const DocumentList({
+    super.key,
+    required this.documents,
+    this.onDocumentTap,
+    this.onDocumentDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +30,9 @@ class DocumentList extends StatelessWidget {
             onTap: onDocumentTap == null
                 ? null
                 : () => onDocumentTap!(document),
+            onDelete: onDocumentDelete == null
+                ? null
+                : () => onDocumentDelete!(document),
           ),
         );
       },

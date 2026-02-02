@@ -21,6 +21,10 @@ const createEmbedding = (chunkIndex: number): EmbeddingResult => ({
   },
 });
 
+type PineconeDeleteParams =
+  | { ids: string[] }
+  | { filter: Record<string, unknown> };
+
 describe("VectorService", () => {
   let mockIndex: {
     upsert: jest.MockedFunction<
@@ -31,7 +35,9 @@ describe("VectorService", () => {
         upsert: jest.MockedFunction<
           (vectors: VectorStorageRequest[]) => Promise<unknown>
         >;
-        deleteMany: jest.MockedFunction<(ids: string[]) => Promise<unknown>>;
+        deleteMany: jest.MockedFunction<
+          (params: PineconeDeleteParams) => Promise<unknown>
+        >;
       }
     >;
   };
@@ -45,9 +51,9 @@ describe("VectorService", () => {
     >;
 
     const deleteMany = jest
-      .fn(async (_ids: string[]) => ({}))
+      .fn(async (_params: PineconeDeleteParams) => ({}))
       .mockResolvedValue({}) as jest.MockedFunction<
-      (ids: string[]) => Promise<unknown>
+      (params: PineconeDeleteParams) => Promise<unknown>
     >;
 
     const namespace = jest
@@ -57,7 +63,9 @@ describe("VectorService", () => {
         upsert: jest.MockedFunction<
           (vectors: VectorStorageRequest[]) => Promise<unknown>
         >;
-        deleteMany: jest.MockedFunction<(ids: string[]) => Promise<unknown>>;
+        deleteMany: jest.MockedFunction<
+          (params: PineconeDeleteParams) => Promise<unknown>
+        >;
       }
     >;
 
