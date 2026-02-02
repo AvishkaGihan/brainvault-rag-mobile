@@ -4,6 +4,7 @@ import '../../../../shared/widgets/app_bar.dart';
 import '../../domain/entities/chat_message.dart';
 import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input.dart';
+import '../widgets/chat_message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? documentId;
@@ -126,10 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(message.text),
-                      );
+                      return ChatMessageBubble(message: message);
                     },
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemCount: messages.length,
