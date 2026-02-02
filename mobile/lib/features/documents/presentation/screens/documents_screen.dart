@@ -25,6 +25,12 @@ class _Strings {
   static const String genericErrorMessage = 'Unable to process this document.';
   static const String refreshFailedSnackbar =
       "Couldn't refresh. Please try again.";
+  static const String deleteConfirmationTitle = 'Delete document?';
+  static const String deleteConfirmationBody = 'This cannot be undone.';
+  static const String deleteSuccessSnackbar = 'Document deleted';
+  static const String deleteErrorSnackbar =
+      'Couldn\'t delete document. Please try again.';
+  static const String deleteRetryLabel = 'Retry';
 }
 
 /// Home screen displaying documents library
@@ -108,6 +114,87 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  void _handleDocumentDelete(
+    BuildContext context,
+    WidgetRef ref,
+    Document document,
+    bool showOfflineBanner,
+  ) {
+    // AC12: Cross-feature coordination - If user is currently chatting with this document,
+    // the chat screen should detect deletion and navigate away automatically.
+    // This is handled by chat screen's document existence checks on query submission.
+
+    if (showOfflineBanner) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(_Strings.requiresInternetSnackbar)),
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('${_Strings.deleteConfirmationTitle} ${document.title}'),
+          content: const Text(_Strings.deleteConfirmationBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                // Perform optimistic deletion
+                try {
+                  await ref
+                      .read(documentsProvider.notifier)
+                      .deleteDocument(document.id, document);
+
+                  // Show success message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(_Strings.deleteSuccessSnackbar),
+                      ),
+                    );
+                  }
+                } on Exception {
+                  // Show error message with retry
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(_Strings.deleteErrorSnackbar),
+                        action: SnackBarAction(
+                          label: _Strings.deleteRetryLabel,
+                          onPressed: () => _handleDocumentDelete(
+                            context,
+                            ref,
+                            document,
+                            showOfflineBanner,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final documentsState = ref.watch(documentsProvider);
@@ -179,6 +266,12 @@ class HomeScreen extends ConsumerWidget {
               : DocumentList(
                   documents: documents,
                   onDocumentTap: (document) => _handleDocumentTap(
+                    context,
+                    ref,
+                    document,
+                    showOfflineBanner,
+                  ),
+                  onDocumentDelete: (document) => _handleDocumentDelete(
                     context,
                     ref,
                     document,

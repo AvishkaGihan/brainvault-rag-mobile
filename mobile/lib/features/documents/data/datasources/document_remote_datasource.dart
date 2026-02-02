@@ -124,8 +124,15 @@ class DocumentRemoteDataSource {
   }
 
   /// Delete document from server
-  /// TODO: Implement in Story 4.5 - Implement Document Deletion
-  Future<void> deleteFromServer(String documentId) async {
-    throw UnimplementedError('Delete will be implemented in Story 4.5');
+  /// Story 4.5: Implement Document Deletion
+  Future<void> deleteDocument(String documentId) async {
+    final response = await _dioClient.delete<Map<String, dynamic>>(
+      '/v1/documents/$documentId',
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Document deletion failed');
+    }
   }
 }

@@ -5,8 +5,14 @@ import '../../domain/entities/document.dart';
 class DocumentCard extends StatelessWidget {
   final Document document;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
-  const DocumentCard({super.key, required this.document, this.onTap});
+  const DocumentCard({
+    super.key,
+    required this.document,
+    this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +52,30 @@ class DocumentCard extends StatelessWidget {
               ),
               visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(width: 4),
+            // Delete button with 48dp minimum touch target
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: onDelete,
+                tooltip: 'Delete document',
+                iconSize: 24,
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            // Chevron button with 48dp minimum touch target
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: onTap,
+                tooltip: 'View document',
+                iconSize: 24,
+                padding: EdgeInsets.zero,
+              ),
             ),
           ],
         ),

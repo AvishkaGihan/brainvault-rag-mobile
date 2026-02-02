@@ -8,9 +8,7 @@ class DeleteDocument {
   const DeleteDocument(this._repository);
 
   /// Delete a document by ID
-  /// TODO: Implement in Story 4.5 - Implement document deletion
   Future<void> call(String documentId) async {
-    // Stub implementation - will be implemented in Story 4.5
     return await _repository.deleteDocument(documentId);
   }
 }

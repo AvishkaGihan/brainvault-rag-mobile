@@ -23,11 +23,17 @@ export interface UpsertDocumentEmbeddingsParams {
   embeddings: EmbeddingResult[];
 }
 
+type PineconeDeleteParams =
+  | { ids: string[] }
+  | { filter: Record<string, unknown> };
+
+interface PineconeNamespace {
+  upsert: (vectors: VectorStorageRequest[]) => Promise<unknown>;
+  deleteMany: (params: PineconeDeleteParams) => Promise<unknown>;
+}
+
 interface PineconeIndex {
-  namespace: (ns: string) => {
-    upsert: (vectors: VectorStorageRequest[]) => Promise<unknown>;
-    deleteMany: (ids: string[]) => Promise<unknown>;
-  };
+  namespace: (ns: string) => PineconeNamespace;
   upsert: (vectors: VectorStorageRequest[]) => Promise<unknown>;
 }
 
@@ -144,6 +150,81 @@ export class VectorService {
     return { deletedCount: ids.length };
   }
 
+  /**
+   * Delete all vectors for a document using metadata filter
+   * Story 4.5: Document Deletion
+   * Uses Pinecone's delete by filter API to remove all vectors matching userId + documentId
+   *
+   * @param userId - User ID (for namespace isolation)
+   * @param documentId - Document ID (for filtering)
+   * @returns Number of deleted vectors
+   */
+  async deleteDocumentVectors(params: {
+    userId: string;
+    documentId: string;
+  }): Promise<{ deletedCount: number }> {
+    const { userId, documentId } = params;
+
+    if (!userId || !documentId) {
+      throw new ValidationError("Missing userId or documentId for deletion", {
+        userId,
+        documentId,
+      });
+    }
+
+    if (!this.pineconeIndex) {
+      logger.warn(
+        "Pinecone index unavailable - skipping vector deletion by filter",
+        {
+          userId,
+          documentId,
+        },
+      );
+      return { deletedCount: 0 };
+    }
+
+    try {
+      // Pinecone filter format: { "documentId": {"$eq": documentId} }
+      // Since we're in a user namespace, all vectors are already isolated by userId
+      const filter = {
+        documentId: { $eq: documentId },
+      };
+
+      // Call deleteMany with filter - returns a DeleteResponse
+      await this.pineconeIndex.namespace(userId).deleteMany({ filter });
+
+      logger.info("Deleted document vectors by filter", {
+        userId,
+        documentId,
+      });
+
+      // Note: Pinecone deleteMany with filter doesn't return count
+      // Returning 0 as placeholder - actual deletion count unknown but operation succeeded
+      return { deletedCount: 0 };
+    } catch (error) {
+      // Handle 404 as successful no-op (namespace or vectors don't exist)
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("404") || errorMessage.includes("not found")) {
+        logger.info("No vectors found to delete (404 from Pinecone)", {
+          userId,
+          documentId,
+        });
+        return { deletedCount: 0 };
+      }
+
+      logger.warn("Failed to delete document vectors by filter", {
+        userId,
+        documentId,
+        error: errorMessage,
+      });
+
+      // Non-blocking error - return success but log the failure
+      // This allows document deletion to proceed even if Pinecone cleanup fails
+      return { deletedCount: 0 };
+    }
+  }
+
   private mapToVectors(
     userId: string,
     documentId: string,
@@ -221,9 +302,12 @@ export class VectorService {
         lastError = error;
 
         // Enhanced Debug Logging
-        console.error(`[DEBUG] Pinecone Upsert Error (Attempt ${attempt}):`, error);
-        if (typeof error === 'object' && error !== null && 'cause' in error) {
-            console.error('[DEBUG] Error Cause:', (error as any).cause);
+        console.error(
+          `[DEBUG] Pinecone Upsert Error (Attempt ${attempt}):`,
+          error,
+        );
+        if (typeof error === "object" && error !== null && "cause" in error) {
+          console.error("[DEBUG] Error Cause:", (error as any).cause);
         }
 
         if (this.isRateLimitError(error) && attempt < this.maxRetries) {
@@ -285,7 +369,7 @@ export class VectorService {
           return;
         }
 
-        await this.pineconeIndex.namespace(userId).deleteMany(batch);
+        await this.pineconeIndex.namespace(userId).deleteMany({ ids: batch });
 
         logger.info("Pinecone delete batch completed", {
           userId,
@@ -296,7 +380,6 @@ export class VectorService {
 
         return;
       } catch (error) {
-
         lastError = error;
 
         if (this.isRateLimitError(error) && attempt < this.maxRetries) {

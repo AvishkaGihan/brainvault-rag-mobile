@@ -18,11 +18,11 @@ void main() {
       },
     );
 
-    test('should expose upload and fetch methods', () {
+    test('should expose upload, fetch, and delete methods', () {
       expect(dataSource.uploadToServer, isA<Function>());
       expect(dataSource.uploadTextDocument, isA<Function>());
       expect(dataSource.fetchDocuments, isA<Function>());
-      expect(dataSource.deleteFromServer, isA<Function>());
+      expect(dataSource.deleteDocument, isA<Function>());
     });
   });
 }
