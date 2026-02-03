@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../domain/entities/chat_message.dart';
+import 'source_preview_bottom_sheet.dart';
 import 'source_citation_chip.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;
 
   const ChatMessageBubble({super.key, required this.message});
+
+  void _showSourcePreviewSheet(BuildContext context, ChatSource source) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SourcePreviewBottomSheet(source: source);
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +91,8 @@ class ChatMessageBubble extends StatelessWidget {
                     SourceCitationChip(
                       key: ValueKey('source_chip_$i'),
                       source: message.sources[i],
+                      onPressed: () =>
+                          _showSourcePreviewSheet(context, message.sources[i]),
                     ),
                 ],
               ),
