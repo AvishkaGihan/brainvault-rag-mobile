@@ -8,12 +8,14 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { createEmbeddingModel, createLLM } from "../config/llm";
 import { index } from "../config/pinecone";
 import { ragSystemPrompt } from "../prompts/rag_system_prompt";
+import {
+  NO_CONTEXT_ANSWER,
+  OUT_OF_SCOPE_ANSWER,
+  isOutOfScopeQuestion,
+} from "../constants/rag-fallbacks";
 import { AppError, ProcessingError, ValidationError } from "../types/api.types";
 import type { ChatQueryResponseData, ChatSource } from "../types/chat.types";
 import { logger } from "../utils/logger";
-
-const NO_CONTEXT_ANSWER =
-  "I don't have information about that in your document.";
 
 interface PineconeQueryRequest {
   vector: number[];
@@ -110,6 +112,8 @@ export class RagQueryService {
     const startTime = Date.now();
 
     try {
+      // SECURITY: Verify document ownership BEFORE checking question scope
+      // This ensures only authorized users can probe the system's detection strategy
       const documentSnapshot = await this.db
         .collection("documents")
         .doc(documentId)
@@ -137,6 +141,22 @@ export class RagQueryService {
           "Document is not ready for chat",
           409,
         );
+      }
+
+      // NOW check if question is out of scope (after ownership verified)
+      if (isOutOfScopeQuestion(question)) {
+        logger.info("Out-of-scope chat query detected", {
+          requestId,
+          userId,
+          documentId,
+          questionLength: question.length,
+        });
+
+        return {
+          answer: OUT_OF_SCOPE_ANSWER,
+          sources: [],
+          confidence: 0,
+        };
       }
 
       const embeddingStart = Date.now();
@@ -200,12 +220,17 @@ export class RagQueryService {
       );
 
       if (resolvedChunks.length === 0) {
-        logger.warn("No valid chunks found after query", {
-          requestId,
-          userId,
-          documentId,
-          matchCount: relevantMatches.length,
-        });
+        logger.warn(
+          "No valid chunks found after query - likely missing chunk data in Firestore",
+          {
+            requestId,
+            userId,
+            documentId,
+            matchCount: relevantMatches.length,
+            attemptedChunks: chunks.length,
+            resolvedChunks: resolvedChunks.length,
+          },
+        );
 
         return {
           answer: NO_CONTEXT_ANSWER,
@@ -233,6 +258,14 @@ export class RagQueryService {
         typeof llmResponse.content === "string"
           ? llmResponse.content.trim()
           : String(llmResponse.content ?? "").trim();
+
+      if (answer === NO_CONTEXT_ANSWER) {
+        return {
+          answer: NO_CONTEXT_ANSWER,
+          sources: [],
+          confidence: 0,
+        };
+      }
 
       const confidence = this.calculateConfidence(relevantMatches);
       const sources: ChatSource[] = resolvedChunks.map((chunk) => ({
