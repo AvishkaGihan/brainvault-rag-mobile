@@ -8,12 +8,14 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { createEmbeddingModel, createLLM } from "../config/llm";
 import { index } from "../config/pinecone";
 import { ragSystemPrompt } from "../prompts/rag_system_prompt";
+import {
+  NO_CONTEXT_ANSWER,
+  OUT_OF_SCOPE_ANSWER,
+  isOutOfScopeQuestion,
+} from "../constants/rag-fallbacks";
 import { AppError, ProcessingError, ValidationError } from "../types/api.types";
 import type { ChatStreamDonePayload, ChatSource } from "../types/chat.types";
 import { logger } from "../utils/logger";
-
-const NO_CONTEXT_ANSWER =
-  "I don't have information about that in your document.";
 
 interface PineconeQueryRequest {
   vector: number[];
@@ -117,6 +119,8 @@ export class RagQueryStreamService {
     const startTime = Date.now();
 
     try {
+      // SECURITY: Verify document ownership BEFORE checking question scope
+      // This ensures only authorized users can probe the system's detection strategy
       const documentSnapshot = await this.db
         .collection("documents")
         .doc(documentId)
@@ -144,6 +148,25 @@ export class RagQueryStreamService {
           "Document is not ready for chat",
           409,
         );
+      }
+
+      // NOW check if question is out of scope (after ownership verified)
+      if (isOutOfScopeQuestion(question)) {
+        logger.info("Out-of-scope streaming chat query detected", {
+          requestId,
+          userId,
+          documentId,
+          questionLength: question.length,
+        });
+
+        return {
+          stream: null,
+          done: {
+            answer: OUT_OF_SCOPE_ANSWER,
+            sources: [],
+            confidence: 0,
+          },
+        };
       }
 
       const embeddingStart = Date.now();
@@ -208,10 +231,17 @@ export class RagQueryStreamService {
       );
 
       if (resolvedChunks.length === 0) {
-        logger.warn("No valid chunks found after streaming query", {
-          requestId,
-          matchCount: relevantMatches.length,
-        });
+        logger.warn(
+          "No valid chunks found after streaming query - likely missing chunk data in Firestore",
+          {
+            requestId,
+            userId,
+            documentId,
+            matchCount: relevantMatches.length,
+            attemptedChunks: chunks.length,
+            resolvedChunks: resolvedChunks.length,
+          },
+        );
 
         return {
           stream: null,
@@ -286,6 +316,17 @@ export class RagQueryStreamService {
         totalMs: Date.now() - startTime,
       });
 
+      if (answer === NO_CONTEXT_ANSWER) {
+        return {
+          stream: null,
+          done: {
+            answer: NO_CONTEXT_ANSWER,
+            sources: [],
+            confidence: 0,
+          },
+        };
+      }
+
       return {
         stream: null,
         done: {
@@ -357,6 +398,11 @@ export class RagQueryStreamService {
     const finalize = async () => {
       const answer = chunks.join("").trim();
       done.answer = answer;
+
+      if (answer === NO_CONTEXT_ANSWER) {
+        done.sources = [];
+        done.confidence = 0;
+      }
 
       logger.info("Streaming RAG query completed", {
         requestId,

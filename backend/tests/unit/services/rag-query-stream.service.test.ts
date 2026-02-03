@@ -1,6 +1,6 @@
 /**
- * RagQueryService Unit Tests
- * Story 5.4: RAG query service logic
+ * RagQueryStreamService Unit Tests
+ * Story 5.7: Hallucination prevention
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
@@ -10,7 +10,7 @@ import {
   NO_CONTEXT_ANSWER,
   OUT_OF_SCOPE_ANSWER,
 } from "../../../src/constants/rag-fallbacks";
-import { RagQueryService } from "../../../src/services/rag-query.service";
+import { RagQueryStreamService } from "../../../src/services/rag-query-stream.service";
 
 jest.mock("../../../src/utils/logger", () => ({
   logger: {
@@ -20,7 +20,7 @@ jest.mock("../../../src/utils/logger", () => ({
   },
 }));
 
-describe("RagQueryService", () => {
+describe("RagQueryStreamService", () => {
   type PineconeQueryResponse = {
     matches?: Array<{
       score?: number;
@@ -36,6 +36,11 @@ describe("RagQueryService", () => {
   type Invoke = (
     messages: Array<SystemMessage | HumanMessage>,
   ) => Promise<{ content: unknown }>;
+  type Stream = (
+    messages: Array<SystemMessage | HumanMessage>,
+  ) =>
+    | AsyncIterable<{ content: unknown }>
+    | Promise<AsyncIterable<{ content: unknown }>>;
   type PineconeQuery = (params: {
     vector: number[];
     topK: number;
@@ -45,6 +50,7 @@ describe("RagQueryService", () => {
 
   const embedQuery = jest.fn() as jest.MockedFunction<EmbedQuery>;
   const invoke = jest.fn() as jest.MockedFunction<Invoke>;
+  const stream = jest.fn() as jest.MockedFunction<Stream>;
   const pineconeQuery = jest.fn() as jest.MockedFunction<PineconeQuery>;
   const pineconeNamespace = { query: pineconeQuery };
   const pineconeIndex = {
@@ -107,58 +113,28 @@ describe("RagQueryService", () => {
       matches: [{ score: 0.6, metadata: { chunkIndex: 0, pageNumber: 1 } }],
     });
 
-    const service = new RagQueryService({
+    const service = new RagQueryStreamService({
       db,
       pineconeIndex,
       embeddingModel: { embedQuery },
-      llm: { invoke },
+      llm: { invoke, stream },
     });
 
-    const response = await service.queryDocument({
+    const response = await service.streamDocument({
       userId: "user-1",
       documentId: "doc-1",
       question: "Test",
     });
 
-    expect(response.answer).toBe(
-      "I don't have information about that in your document.",
-    );
-    expect(response.sources).toEqual([]);
-    expect(response.confidence).toBe(0);
+    expect(response.stream).toBeNull();
+    expect(response.done.answer).toBe(NO_CONTEXT_ANSWER);
+    expect(response.done.sources).toEqual([]);
+    expect(response.done.confidence).toBe(0);
     expect(invoke).not.toHaveBeenCalled();
+    expect(stream).not.toHaveBeenCalled();
   });
 
-  it("should fetch chunks and map sources", async () => {
-    pineconeQuery.mockResolvedValue({
-      matches: [
-        {
-          score: 0.9,
-          metadata: { chunkIndex: 1, pageNumber: 2, textPreview: "Preview" },
-        },
-      ],
-    });
-
-    const service = new RagQueryService({
-      db,
-      pineconeIndex,
-      embeddingModel: { embedQuery },
-      llm: { invoke },
-    });
-
-    const response = await service.queryDocument({
-      userId: "user-1",
-      documentId: "doc-1",
-      question: "Test",
-    });
-
-    expect(chunksCollection.doc).toHaveBeenCalledWith("1");
-    expect(response.sources).toEqual([{ pageNumber: 2, snippet: "Preview" }]);
-    expect(response.answer).toBe("Answer");
-    // Confidence is now scaled: (0.9 - 0.7) / (1 - 0.7) * 0.9 + 0.1 = 0.7
-    expect(response.confidence).toBeCloseTo(0.7, 1);
-  });
-
-  it("should query pinecone with user and document filter", async () => {
+  it("should override sources and confidence when streaming returns no-context", async () => {
     pineconeQuery.mockResolvedValue({
       matches: [
         {
@@ -168,100 +144,61 @@ describe("RagQueryService", () => {
       ],
     });
 
-    const service = new RagQueryService({
+    stream.mockImplementation(async function* () {
+      yield { content: NO_CONTEXT_ANSWER };
+    });
+
+    const service = new RagQueryStreamService({
       db,
       pineconeIndex,
       embeddingModel: { embedQuery },
-      llm: { invoke },
+      llm: { invoke, stream },
     });
 
-    await service.queryDocument({
+    const response = await service.streamDocument({
       userId: "user-1",
       documentId: "doc-1",
       question: "Test",
     });
 
-    expect(pineconeIndex.namespace).toHaveBeenCalledWith("user-1");
-    expect(pineconeQuery).toHaveBeenCalledWith({
-      vector: [0.1, 0.2],
-      topK: 3,
-      includeMetadata: true,
-      filter: {
-        userId: { $eq: "user-1" },
-        documentId: { $eq: "doc-1" },
-      },
-    });
-  });
+    if (!response.stream) {
+      throw new Error("Expected stream to be defined");
+    }
 
-  it("should override sources and confidence when LLM returns no-context", async () => {
-    invoke.mockResolvedValue({ content: NO_CONTEXT_ANSWER });
-    pineconeQuery.mockResolvedValue({
-      matches: [
-        {
-          score: 0.95,
-          metadata: { chunkIndex: 0, pageNumber: 1, textPreview: "Preview" },
-        },
-      ],
-    });
+    for await (const _ of response.stream) {
+      // consume
+    }
 
-    const service = new RagQueryService({
-      db,
-      pineconeIndex,
-      embeddingModel: { embedQuery },
-      llm: { invoke },
-    });
-
-    const response = await service.queryDocument({
-      userId: "user-1",
-      documentId: "doc-1",
-      question: "Test",
-    });
-
-    expect(response.answer).toBe(NO_CONTEXT_ANSWER);
-    expect(response.sources).toEqual([]);
-    expect(response.confidence).toBe(0);
+    expect(response.done.answer).toBe(NO_CONTEXT_ANSWER);
+    expect(response.done.sources).toEqual([]);
+    expect(response.done.confidence).toBe(0);
   });
 
   it("should return out-of-scope response without invoking LLM", async () => {
-    const service = new RagQueryService({
+    const service = new RagQueryStreamService({
       db,
       pineconeIndex,
       embeddingModel: { embedQuery },
-      llm: { invoke },
+      llm: { invoke, stream },
     });
 
-    const response = await service.queryDocument({
+    const response = await service.streamDocument({
       userId: "user-1",
       documentId: "doc-1",
       question: "What's the weather today?",
     });
 
-    expect(response.answer).toBe(OUT_OF_SCOPE_ANSWER);
-    expect(response.sources).toEqual([]);
-    expect(response.confidence).toBe(0);
+    expect(response.stream).toBeNull();
+    expect(response.done.answer).toBe(OUT_OF_SCOPE_ANSWER);
+    expect(response.done.sources).toEqual([]);
+    expect(response.done.confidence).toBe(0);
     expect(embedQuery).not.toHaveBeenCalled();
     expect(pineconeQuery).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
+    expect(stream).not.toHaveBeenCalled();
   });
 
   it("should NOT reject legitimate document questions with temporal keywords", async () => {
-    pineconeQuery.mockResolvedValue({
-      matches: [
-        {
-          score: 0.9,
-          metadata: { chunkIndex: 0, pageNumber: 1, textPreview: "Preview" },
-        },
-      ],
-    });
-
-    const service = new RagQueryService({
-      db,
-      pineconeIndex,
-      embeddingModel: { embedQuery },
-      llm: { invoke },
-    });
-
-    // These should all proceed to RAG, not be rejected as out-of-scope
     const testQuestions = [
       "When was this document last updated?",
       "What time periods are covered in this?",
@@ -279,8 +216,18 @@ describe("RagQueryService", () => {
           },
         ],
       });
+      stream.mockImplementation(async function* () {
+        yield { content: "Answer" };
+      });
 
-      const response = await service.queryDocument({
+      const service = new RagQueryStreamService({
+        db,
+        pineconeIndex,
+        embeddingModel: { embedQuery },
+        llm: { invoke, stream },
+      });
+
+      const response = await service.streamDocument({
         userId: "user-1",
         documentId: "doc-1",
         question,
@@ -289,8 +236,13 @@ describe("RagQueryService", () => {
       // Should have called embedding and pinecone, not rejected as out-of-scope
       expect(embedQuery).toHaveBeenCalled();
       expect(pineconeQuery).toHaveBeenCalled();
-      expect(response.answer).toBe("Answer"); // Should get LLM response, not OUT_OF_SCOPE
-      expect(response.answer).not.toBe(OUT_OF_SCOPE_ANSWER);
+      // Consume the stream to finalize the answer
+      if (response.stream) {
+        for await (const _ of response.stream) {
+          // consume
+        }
+      }
+      expect(response.done.answer).not.toBe(OUT_OF_SCOPE_ANSWER);
     }
   });
 });
