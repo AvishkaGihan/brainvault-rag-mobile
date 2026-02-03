@@ -1,4 +1,5 @@
 import 'package:brainvault/features/chat/domain/entities/chat_message.dart';
+import 'package:brainvault/features/chat/data/chat_api.dart';
 import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
 import 'package:brainvault/features/documents/domain/entities/document.dart';
 import 'package:brainvault/features/documents/presentation/providers/documents_provider.dart';
@@ -120,15 +121,20 @@ void main() {
       createdAt: DateTime(2026, 1, 10),
     );
 
-    ProviderScope buildScopedChat() {
+    ProviderScope buildScopedChatWithApi(ChatApi chatApi) {
       return ProviderScope(
         overrides: [
           documentsProvider.overrideWith(
             () => _TestDocumentsNotifier([testDocument]),
           ),
+          chatApiProvider.overrideWith((ref) => chatApi),
         ],
         child: const MaterialApp(home: ChatScreen(documentId: 'doc-1')),
       );
+    }
+
+    ProviderScope buildScopedChat() {
+      return buildScopedChatWithApi(_FakeChatApiSuccess());
     }
 
     testWidgets('send button enabled after typing', (
@@ -140,6 +146,12 @@ void main() {
       await tester.enterText(
         find.byKey(const Key('chat_input_field')),
         'Hello',
+      );
+      await tester.pump();
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Retry',
       );
       await tester.pump();
 
@@ -170,13 +182,17 @@ void main() {
       );
       expect(inputField.controller?.text ?? '', isEmpty);
 
-      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('awaiting response disables send and shows thinking', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(buildScopedChat());
+      await tester.pumpWidget(
+        buildScopedChatWithApi(
+          _FakeChatApiSuccess(delay: const Duration(milliseconds: 200)),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
@@ -194,10 +210,15 @@ void main() {
       expect(sendButton.onPressed, isNull);
       expect(find.text('Thinking...'), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('Thinking...'), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.text('Thinking...'), findsNothing);
     });
 
-    testWidgets('placeholder completion re-enables send and hides thinking', (
+    testWidgets('assistant message appears after send', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(buildScopedChat());
@@ -210,21 +231,9 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byKey(const Key('chat_send_button')));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(find.text('Thinking...'), findsOneWidget);
-
-      await tester.pump(const Duration(milliseconds: 700));
-
-      expect(find.text('Thinking...'), findsNothing);
-
-      await tester.enterText(find.byKey(const Key('chat_input_field')), 'Next');
-      await tester.pump();
-
-      final sendButton = tester.widget<IconButton>(
-        find.byKey(const Key('chat_send_button')),
-      );
-      expect(sendButton.onPressed, isNotNull);
+      expect(find.text('Assistant reply'), findsOneWidget);
     });
 
     testWidgets('send via Enter key press (onSubmitted)', (
@@ -245,9 +254,41 @@ void main() {
 
       // Message should appear after pressing Enter
       expect(find.text('Message via Enter'), findsOneWidget);
-      expect(find.text('Thinking...'), findsOneWidget);
+      await tester.pumpAndSettle();
+    });
 
-      await tester.pump(const Duration(milliseconds: 700));
+    testWidgets('error path shows SnackBar and re-enables send', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(buildScopedChatWithApi(_FakeChatApiFailure()));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Failure test',
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('chat_send_button')));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thinking...'), findsNothing);
+      expect(
+        find.text('Unable to get an answer right now. Please try again.'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Retry',
+      );
+      await tester.pump();
+
+      final sendButton = tester.widget<IconButton>(
+        find.byKey(const Key('chat_send_button')),
+      );
+      expect(sendButton.onPressed, isNotNull);
     });
   });
 }
@@ -259,4 +300,36 @@ class _TestDocumentsNotifier extends DocumentsNotifier {
 
   @override
   Future<List<Document>> build() async => documents;
+}
+
+class _FakeChatApiSuccess implements ChatApi {
+  final Duration? delay;
+
+  _FakeChatApiSuccess({this.delay});
+
+  @override
+  Future<ChatQueryResponseData> queryDocumentChat({
+    required String documentId,
+    required String question,
+  }) async {
+    if (delay != null) {
+      await Future.delayed(delay!);
+    }
+
+    return const ChatQueryResponseData(
+      answer: 'Assistant reply',
+      sources: [ChatSource(pageNumber: 1, snippet: 'Snippet')],
+      confidence: 0.9,
+    );
+  }
+}
+
+class _FakeChatApiFailure implements ChatApi {
+  @override
+  Future<ChatQueryResponseData> queryDocumentChat({
+    required String documentId,
+    required String question,
+  }) async {
+    throw Exception('Network error');
+  }
 }

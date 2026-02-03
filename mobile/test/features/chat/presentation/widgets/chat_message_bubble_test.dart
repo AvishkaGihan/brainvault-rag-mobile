@@ -99,8 +99,8 @@ void main() {
           role: ChatMessageRole.assistant,
           createdAt: DateTime(2026, 2, 2, 14, 34),
           sources: const [
-            ChatSource(label: 'Source 1'),
-            ChatSource(label: 'Source 2'),
+            ChatSource(pageNumber: 1, snippet: 'Source 1'),
+            ChatSource(pageNumber: 2, snippet: 'Source 2'),
           ],
         );
 
