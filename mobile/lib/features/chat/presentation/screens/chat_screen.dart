@@ -8,6 +8,7 @@ import '../../../../shared/widgets/app_bar.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../data/chat_api.dart';
 import '../../data/chat_stream_event.dart';
+import '../providers/chat_history_provider.dart';
 import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/chat_message_bubble.dart';
@@ -40,6 +41,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   DateTime? _lastStreamScroll;
   int? _fadeInMessageIndex;
   double _fadeInOpacity = 1.0;
+  bool _hasLoadedHistory = false;
+  String? _historyDocumentId;
 
   @override
   void initState() {
@@ -47,7 +50,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController = TextEditingController();
     _scrollController = ScrollController();
     _messages = List<ChatMessage>.from(widget.messages);
+    _historyDocumentId = widget.documentId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(chatHistoryDocumentIdProvider.notifier).set(_historyDocumentId);
       _scrollToLatestMessage();
     });
   }
@@ -60,6 +66,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToLatestMessage();
       });
+    }
+    if (oldWidget.documentId != widget.documentId) {
+      _historyDocumentId = widget.documentId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(chatHistoryDocumentIdProvider.notifier)
+            .set(_historyDocumentId);
+      });
+      _hasLoadedHistory = false;
     }
   }
 
@@ -379,9 +395,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             widget.documentTitle!.trim().isNotEmpty)
         ? widget.documentTitle!
         : 'Chat';
+    final historyState = ref.watch(chatHistoryProvider);
+
+    final historyMessages = historyState.asData?.value;
+    if (!_hasLoadedHistory && historyMessages != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _hasLoadedHistory) return;
+        setState(() {
+          _messages = List<ChatMessage>.from(historyMessages);
+          _hasLoadedHistory = true;
+        });
+        _scrollToLatestMessage();
+      });
+    }
+
     final messages = _messages;
     final isSendEnabled = _canSend && !_isAwaitingResponse;
     final showThinkingIndicator = _isAwaitingResponse && !_isStreaming;
+    final showHistoryLoading = historyState.isLoading && messages.isEmpty;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -411,7 +442,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: messages.isEmpty
-                ? const ChatEmptyState()
+                ? (showHistoryLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : const ChatEmptyState())
                 : ListView.separated(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(

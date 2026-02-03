@@ -16,4 +16,10 @@ router.post("/", chatController.queryDocumentChat);
  */
 router.post("/stream", chatController.streamDocumentChat);
 
+/**
+ * GET /api/v1/documents/:documentId/chat/history
+ * Load recent or paginated chat history
+ */
+router.get("/history", chatController.getChatHistory);
+
 export { router as chatRoutes };

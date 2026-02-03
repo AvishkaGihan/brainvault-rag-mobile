@@ -1,6 +1,8 @@
 import 'package:brainvault/features/chat/domain/entities/chat_message.dart';
+import 'package:brainvault/features/chat/domain/repositories/chat_history_repository.dart';
 import 'package:brainvault/features/chat/data/chat_api.dart';
 import 'package:brainvault/features/chat/data/chat_stream_event.dart';
+import 'package:brainvault/features/chat/presentation/providers/chat_history_provider.dart';
 import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
 import 'package:brainvault/features/documents/domain/entities/document.dart';
 import 'package:brainvault/features/documents/presentation/providers/documents_provider.dart';
@@ -122,13 +124,18 @@ void main() {
       createdAt: DateTime(2026, 1, 10),
     );
 
-    ProviderScope buildScopedChatWithApi(ChatApi chatApi) {
+    ProviderScope buildScopedChatWithApi(
+      ChatApi chatApi, {
+      ChatHistoryRepository? historyRepository,
+    }) {
+      final repository = historyRepository ?? _FakeChatHistoryRepository();
       return ProviderScope(
         overrides: [
           documentsProvider.overrideWith(
             () => _TestDocumentsNotifier([testDocument]),
           ),
           chatApiProvider.overrideWith((ref) => chatApi),
+          chatHistoryRepositoryProvider.overrideWith((ref) => repository),
         ],
         child: const MaterialApp(home: ChatScreen(documentId: 'doc-1')),
       );
@@ -358,6 +365,75 @@ void main() {
       expect(sendButton.onPressed, isNotNull);
     });
   });
+
+  group('ChatScreen - Story 5.8', () {
+    testWidgets('renders history messages from provider', (
+      WidgetTester tester,
+    ) async {
+      final historyRepository = _FakeChatHistoryRepository(
+        history: [
+          const ChatMessage(text: 'History one'),
+          const ChatMessage(text: 'History two'),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatHistoryRepositoryProvider.overrideWith(
+              (ref) => historyRepository,
+            ),
+          ],
+          child: const MaterialApp(
+            home: ChatScreen(documentId: 'doc-1', documentTitle: 'Doc'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('History one'), findsOneWidget);
+      expect(find.text('History two'), findsOneWidget);
+    });
+
+    testWidgets('reloads history after navigation back', (
+      WidgetTester tester,
+    ) async {
+      final historyRepository = _CountingChatHistoryRepository();
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatHistoryRepositoryProvider.overrideWith(
+              (ref) => historyRepository,
+            ),
+          ],
+          child: MaterialApp(
+            navigatorKey: navigatorKey,
+            home: const ChatScreen(documentId: 'doc-1'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(historyRepository.fetchCount, equals(1));
+
+      navigatorKey.currentState!.pushReplacement(
+        MaterialPageRoute(builder: (_) => const SizedBox.shrink()),
+      );
+      await tester.pumpAndSettle();
+
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (_) => const ChatScreen(documentId: 'doc-1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(historyRepository.fetchCount, equals(2));
+    });
+  });
 }
 
 class _TestDocumentsNotifier extends DocumentsNotifier {
@@ -393,6 +469,23 @@ class _FakeChatApiStreamImmediate implements ChatApi {
       confidence: 0.9,
     );
   }
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return [];
+  }
 }
 
 class _FakeChatApiStreamDelayed implements ChatApi {
@@ -420,6 +513,23 @@ class _FakeChatApiStreamDelayed implements ChatApi {
       sources: [],
       confidence: 0.9,
     );
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return [];
   }
 }
 
@@ -449,6 +559,23 @@ class _FakeChatApiStreamPartial implements ChatApi {
       confidence: 0.92,
     );
   }
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return [];
+  }
 }
 
 class _FakeChatApiStreamFailure implements ChatApi {
@@ -471,6 +598,23 @@ class _FakeChatApiStreamFailure implements ChatApi {
       confidence: 0.8,
     );
   }
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return [];
+  }
 }
 
 class _FakeChatApiFailure implements ChatApi {
@@ -488,5 +632,67 @@ class _FakeChatApiFailure implements ChatApi {
     required String question,
   }) async {
     throw Exception('Network error');
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return [];
+  }
+}
+
+class _FakeChatHistoryRepository implements ChatHistoryRepository {
+  final List<ChatMessage> history;
+
+  _FakeChatHistoryRepository({this.history = const []});
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory(
+    String documentId, {
+    int limit = 100,
+  }) async {
+    return history;
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory(
+    String documentId,
+    DateTime before, {
+    int limit = 100,
+  }) async {
+    return history;
+  }
+}
+
+class _CountingChatHistoryRepository implements ChatHistoryRepository {
+  int fetchCount = 0;
+
+  @override
+  Future<List<ChatMessage>> fetchChatHistory(
+    String documentId, {
+    int limit = 100,
+  }) async {
+    fetchCount += 1;
+    return [ChatMessage(text: 'History $fetchCount')];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory(
+    String documentId,
+    DateTime before, {
+    int limit = 100,
+  }) async {
+    return [];
   }
 }

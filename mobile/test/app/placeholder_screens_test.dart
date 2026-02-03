@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brainvault/features/auth/presentation/screens/login_screen.dart';
 import 'package:brainvault/features/documents/presentation/screens/documents_screen.dart';
 import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
+import 'package:brainvault/features/chat/presentation/providers/chat_history_provider.dart';
+import 'package:brainvault/features/chat/domain/repositories/chat_history_repository.dart';
+import 'package:brainvault/features/chat/domain/entities/chat_message.dart';
 import 'package:brainvault/features/documents/presentation/providers/documents_provider.dart';
 import 'package:brainvault/features/documents/presentation/providers/upload_provider.dart';
 import 'package:brainvault/features/documents/domain/entities/document.dart';
@@ -82,6 +85,9 @@ void main() {
         ProviderScope(
           overrides: [
             documentsProvider.overrideWith(() => TestDocumentsNotifier()),
+            chatHistoryRepositoryProvider.overrideWith(
+              (ref) => _FakeChatHistoryRepository(),
+            ),
           ],
           child: const MaterialApp(home: ChatScreen(documentId: testDocId)),
         ),
@@ -100,6 +106,9 @@ void main() {
         ProviderScope(
           overrides: [
             documentsProvider.overrideWith(() => TestDocumentsNotifier()),
+            chatHistoryRepositoryProvider.overrideWith(
+              (ref) => _FakeChatHistoryRepository(),
+            ),
           ],
           child: const MaterialApp(home: ChatScreen(documentId: '')),
         ),
@@ -140,4 +149,23 @@ void main() {
       expect(find.text('BrainVault'), findsOneWidget);
     });
   });
+}
+
+class _FakeChatHistoryRepository implements ChatHistoryRepository {
+  @override
+  Future<List<ChatMessage>> fetchChatHistory(
+    String documentId, {
+    int limit = 100,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderChatHistory(
+    String documentId,
+    DateTime before, {
+    int limit = 100,
+  }) async {
+    return [];
+  }
 }

@@ -75,6 +75,98 @@ class ChatApi {
     );
   }
 
+  Future<List<ChatMessage>> fetchChatHistory({
+    required String documentId,
+    int limit = 100,
+  }) async {
+    return _fetchChatHistoryInternal(documentId: documentId, limit: limit);
+  }
+
+  Future<List<ChatMessage>> fetchOlderChatHistory({
+    required String documentId,
+    required DateTime before,
+    int limit = 100,
+  }) async {
+    return _fetchChatHistoryInternal(
+      documentId: documentId,
+      limit: limit,
+      before: before.toIso8601String(),
+    );
+  }
+
+  Future<List<ChatMessage>> _fetchChatHistoryInternal({
+    required String documentId,
+    required int limit,
+    String? before,
+  }) async {
+    final response = await _dioClient.get<Map<String, dynamic>>(
+      '/v1/documents/$documentId/chat/history',
+      queryParameters: {'limit': limit, if (before != null) 'before': before},
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception('Chat history fetch failed');
+    }
+
+    final data = body['data'];
+    if (data is! Map) {
+      throw Exception('Invalid chat history response');
+    }
+
+    final messagesRaw = data['messages'];
+    if (messagesRaw is! List) {
+      return [];
+    }
+
+    final messages = <ChatMessage>[];
+    for (final item in messagesRaw) {
+      if (item is Map) {
+        final roleValue = item['role'];
+        final content = item['content'];
+        final timestamp = item['timestamp'];
+        final sourcesRaw = item['sources'];
+
+        if (content is! String || content.trim().isEmpty) {
+          continue;
+        }
+
+        final sources = <ChatSource>[];
+        if (sourcesRaw is List) {
+          for (final sourceItem in sourcesRaw) {
+            if (sourceItem is Map) {
+              final pageNumber = sourceItem['pageNumber'];
+              final snippet = sourceItem['snippet'];
+              if (pageNumber is num) {
+                sources.add(
+                  ChatSource(
+                    pageNumber: pageNumber.toInt(),
+                    snippet: snippet is String ? snippet : null,
+                  ),
+                );
+              }
+            }
+          }
+        }
+
+        messages.add(
+          ChatMessage(
+            text: content.trim(),
+            role: roleValue == 'assistant'
+                ? ChatMessageRole.assistant
+                : ChatMessageRole.user,
+            createdAt: timestamp is String
+                ? DateTime.tryParse(timestamp)
+                : null,
+            sources: sources,
+          ),
+        );
+      }
+    }
+
+    return messages;
+  }
+
   Stream<ChatStreamEvent> streamDocumentChat({
     required String documentId,
     required String question,

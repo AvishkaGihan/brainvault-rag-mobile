@@ -6,18 +6,22 @@
 import { Request, Response, NextFunction } from "express";
 import { RagQueryService } from "../services/rag-query.service";
 import { RagQueryStreamService } from "../services/rag-query-stream.service";
+import { ChatHistoryService } from "../services/chat-history.service";
 import { AppError, ValidationError } from "../types/api.types";
 import type { ApiResponse } from "../types/api.types";
 import type {
+  ChatHistory,
   ChatQueryRequest,
   ChatQueryResponseData,
   ChatStreamDonePayload,
 } from "../types/chat.types";
 import { getCurrentTimestamp } from "../utils/helpers";
+import { logger } from "../utils/logger";
 
 export class ChatController {
   private ragQueryService = new RagQueryService();
   private ragQueryStreamService = new RagQueryStreamService();
+  private chatHistoryService = new ChatHistoryService();
 
   /**
    * POST /api/v1/documents/:documentId/chat
@@ -48,6 +52,20 @@ export class ChatController {
         userId,
         documentId,
         question: question.trim(),
+      });
+
+      await this.chatHistoryService.appendMessages({
+        userId,
+        documentId,
+        chatId: "active",
+        messages: [
+          { role: "user", content: question.trim(), sources: [] },
+          {
+            role: "assistant",
+            content: result.answer,
+            sources: result.sources,
+          },
+        ],
       });
 
       const timestamp = getCurrentTimestamp();
@@ -119,6 +137,30 @@ export class ChatController {
       }
 
       if (!clientClosed && !res.writableEnded) {
+        void this.chatHistoryService
+          .appendMessages({
+            userId,
+            documentId,
+            chatId: "active",
+            messages: [
+              { role: "user", content: question.trim(), sources: [] },
+              {
+                role: "assistant",
+                content: done.answer,
+                sources: done.sources,
+              },
+            ],
+          })
+          .catch((persistError) => {
+            logger.error("Failed to persist streamed chat history", {
+              userId,
+              documentId,
+              error:
+                persistError instanceof Error
+                  ? persistError.message
+                  : String(persistError),
+            });
+          });
         this.writeSseEvent(res, "done", done);
         res.end();
       }
@@ -131,6 +173,54 @@ export class ChatController {
         }
         return;
       }
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/v1/documents/:documentId/chat/history
+   * Load recent or paginated chat history for a document
+   */
+  getChatHistory = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { documentId } = req.params;
+      const { limit, before } = req.query;
+
+      if (!documentId || documentId.trim().length === 0) {
+        throw new ValidationError("Invalid documentId", { documentId });
+      }
+
+      const parsedLimit = limit ? Number.parseInt(String(limit), 10) : 100;
+      const userId = req.user!.uid;
+
+      const history: ChatHistory = before
+        ? await this.chatHistoryService.getOlderMessages({
+            userId,
+            documentId,
+            chatId: "active",
+            before: String(before),
+            limit: parsedLimit,
+          })
+        : await this.chatHistoryService.getRecentMessages({
+            userId,
+            documentId,
+            chatId: "active",
+            limit: parsedLimit,
+          });
+
+      const timestamp = getCurrentTimestamp();
+      const response: ApiResponse<ChatHistory> = {
+        success: true,
+        data: history,
+        meta: { timestamp, count: history.messages.length },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
       next(error);
     }
   };

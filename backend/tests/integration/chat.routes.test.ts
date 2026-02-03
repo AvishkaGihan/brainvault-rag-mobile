@@ -29,6 +29,25 @@ type QueryDocument = (params: {
 
 const queryDocumentMock = jest.fn() as jest.MockedFunction<QueryDocument>;
 
+type AppendMessages = (params: {
+  userId: string;
+  documentId: string;
+  chatId: string;
+  messages: Array<{ role: string; content: string; sources?: unknown[] }>;
+}) => Promise<void>;
+
+type GetHistory = (params: {
+  userId: string;
+  documentId: string;
+  chatId: string;
+  limit?: number;
+  before?: string;
+}) => Promise<{ chatId: string; messages: Array<{ content: string }> }>;
+
+const appendMessagesMock = jest.fn() as jest.MockedFunction<AppendMessages>;
+const getRecentMessagesMock = jest.fn() as jest.MockedFunction<GetHistory>;
+const getOlderMessagesMock = jest.fn() as jest.MockedFunction<GetHistory>;
+
 // Mock Firebase before importing any modules that use it
 jest.mock("../../src/config/firebase", () => ({
   auth: {
@@ -47,6 +66,14 @@ jest.mock("../../src/config/firebase", () => ({
 jest.mock("../../src/services/rag-query.service", () => ({
   RagQueryService: jest.fn().mockImplementation(() => ({
     queryDocument: queryDocumentMock,
+  })),
+}));
+
+jest.mock("../../src/services/chat-history.service", () => ({
+  ChatHistoryService: jest.fn().mockImplementation(() => ({
+    appendMessages: appendMessagesMock,
+    getRecentMessages: getRecentMessagesMock,
+    getOlderMessages: getOlderMessagesMock,
   })),
 }));
 
@@ -83,6 +110,10 @@ describe("Chat Routes Integration", () => {
 
   beforeEach(() => {
     queryDocumentMock.mockReset();
+    appendMessagesMock.mockReset();
+    getRecentMessagesMock.mockReset();
+    getOlderMessagesMock.mockReset();
+    appendMessagesMock.mockResolvedValue(undefined);
   });
 
   it("should return success response on happy path", async () => {
@@ -166,5 +197,22 @@ describe("Chat Routes Integration", () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("should return chat history in chronological order", async () => {
+    getRecentMessagesMock.mockResolvedValue({
+      chatId: "active",
+      messages: [{ content: "First" }, { content: "Second" }],
+    });
+
+    const response = await request(app)
+      .get("/api/v1/documents/doc-1/chat/history?limit=100")
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.chatId).toBe("active");
+    expect(response.body.data.messages).toHaveLength(2);
+    expect(response.body.data.messages[0].content).toBe("First");
   });
 });

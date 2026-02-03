@@ -31,6 +31,15 @@ type StreamDocument = (params: {
 
 const streamDocumentMock = jest.fn() as jest.MockedFunction<StreamDocument>;
 
+type AppendMessages = (params: {
+  userId: string;
+  documentId: string;
+  chatId: string;
+  messages: Array<{ role: string; content: string; sources?: unknown[] }>;
+}) => Promise<void>;
+
+const appendMessagesMock = jest.fn() as jest.MockedFunction<AppendMessages>;
+
 // Mock Firebase before importing any modules that use it
 jest.mock("../../src/config/firebase", () => ({
   auth: {
@@ -49,6 +58,12 @@ jest.mock("../../src/config/firebase", () => ({
 jest.mock("../../src/services/rag-query-stream.service", () => ({
   RagQueryStreamService: jest.fn().mockImplementation(() => ({
     streamDocument: streamDocumentMock,
+  })),
+}));
+
+jest.mock("../../src/services/chat-history.service", () => ({
+  ChatHistoryService: jest.fn().mockImplementation(() => ({
+    appendMessages: appendMessagesMock,
   })),
 }));
 
@@ -90,6 +105,8 @@ describe("Chat Stream Routes Integration", () => {
 
   beforeEach(() => {
     streamDocumentMock.mockReset();
+    appendMessagesMock.mockReset();
+    appendMessagesMock.mockResolvedValue(undefined);
   });
 
   it("should return SSE content type and stream events", async () => {
