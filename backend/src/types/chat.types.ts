@@ -17,3 +17,18 @@ export interface ChatQueryResponseData {
   sources: ChatSource[];
   confidence: number;
 }
+
+export interface ChatStreamDeltaPayload {
+  text: string;
+}
+
+export interface ChatStreamDonePayload {
+  answer: string;
+  sources: ChatSource[];
+  confidence: number;
+}
+
+export interface ChatStreamErrorPayload {
+  code: string;
+  message: string;
+}

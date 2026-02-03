@@ -1,5 +1,6 @@
 import 'package:brainvault/features/chat/domain/entities/chat_message.dart';
 import 'package:brainvault/features/chat/data/chat_api.dart';
+import 'package:brainvault/features/chat/data/chat_stream_event.dart';
 import 'package:brainvault/features/chat/presentation/screens/chat_screen.dart';
 import 'package:brainvault/features/documents/domain/entities/document.dart';
 import 'package:brainvault/features/documents/presentation/providers/documents_provider.dart';
@@ -134,7 +135,7 @@ void main() {
     }
 
     ProviderScope buildScopedChat() {
-      return buildScopedChatWithApi(_FakeChatApiSuccess());
+      return buildScopedChatWithApi(_FakeChatApiStreamImmediate());
     }
 
     testWidgets('send button enabled after typing', (
@@ -185,13 +186,11 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('awaiting response disables send and shows thinking', (
+    testWidgets('awaiting response disables send and shows streaming cursor', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        buildScopedChatWithApi(
-          _FakeChatApiSuccess(delay: const Duration(milliseconds: 200)),
-        ),
+        buildScopedChatWithApi(_FakeChatApiStreamDelayed()),
       );
       await tester.pumpAndSettle();
 
@@ -208,14 +207,10 @@ void main() {
         find.byKey(const Key('chat_send_button')),
       );
       expect(sendButton.onPressed, isNull);
-      expect(find.text('Thinking...'), findsOneWidget);
+      expect(find.byKey(const Key('chat_stream_cursor')), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(find.text('Thinking...'), findsOneWidget);
-
-      await tester.pump(const Duration(milliseconds: 250));
-      expect(find.text('Thinking...'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(find.byKey(const Key('chat_stream_cursor')), findsNothing);
     });
 
     testWidgets('assistant message appears after send', (
@@ -234,6 +229,78 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Assistant reply'), findsOneWidget);
+    });
+
+    testWidgets('shows partial text during streaming before done', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        buildScopedChatWithApi(_FakeChatApiStreamPartial()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Stream me',
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('chat_send_button')));
+      await tester.pump();
+
+      await tester.pump();
+      expect(find.textContaining('Part'), findsOneWidget);
+      expect(find.byKey(const Key('chat_stream_cursor')), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(find.text('Partial response'), findsOneWidget);
+      expect(find.byKey(const Key('chat_stream_cursor')), findsNothing);
+    });
+
+    testWidgets('citation chips appear only after stream done', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        buildScopedChatWithApi(_FakeChatApiStreamPartial()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Citations',
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('chat_send_button')));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('source_chip_0')), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('source_chip_0')), findsOneWidget);
+    });
+
+    testWidgets('fallback path renders full response when stream fails', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        buildScopedChatWithApi(_FakeChatApiStreamFailure()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('chat_input_field')),
+        'Fallback',
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('chat_send_button')));
+      await tester.pump();
+
+      await tester.pumpAndSettle();
+      expect(find.text('Fallback reply'), findsOneWidget);
     });
 
     testWidgets('send via Enter key press (onSubmitted)', (
@@ -302,20 +369,24 @@ class _TestDocumentsNotifier extends DocumentsNotifier {
   Future<List<Document>> build() async => documents;
 }
 
-class _FakeChatApiSuccess implements ChatApi {
-  final Duration? delay;
-
-  _FakeChatApiSuccess({this.delay});
+class _FakeChatApiStreamImmediate implements ChatApi {
+  @override
+  Stream<ChatStreamEvent> streamDocumentChat({
+    required String documentId,
+    required String question,
+  }) async* {
+    yield const ChatStreamDone(
+      answer: 'Assistant reply',
+      sources: [ChatSource(pageNumber: 1, snippet: 'Snippet')],
+      confidence: 0.9,
+    );
+  }
 
   @override
   Future<ChatQueryResponseData> queryDocumentChat({
     required String documentId,
     required String question,
   }) async {
-    if (delay != null) {
-      await Future.delayed(delay!);
-    }
-
     return const ChatQueryResponseData(
       answer: 'Assistant reply',
       sources: [ChatSource(pageNumber: 1, snippet: 'Snippet')],
@@ -324,7 +395,93 @@ class _FakeChatApiSuccess implements ChatApi {
   }
 }
 
+class _FakeChatApiStreamDelayed implements ChatApi {
+  @override
+  Stream<ChatStreamEvent> streamDocumentChat({
+    required String documentId,
+    required String question,
+  }) async* {
+    yield const ChatStreamDelta(text: 'Working');
+    await Future.delayed(const Duration(milliseconds: 120));
+    yield const ChatStreamDone(
+      answer: 'Assistant reply',
+      sources: [],
+      confidence: 0.9,
+    );
+  }
+
+  @override
+  Future<ChatQueryResponseData> queryDocumentChat({
+    required String documentId,
+    required String question,
+  }) async {
+    return const ChatQueryResponseData(
+      answer: 'Assistant reply',
+      sources: [],
+      confidence: 0.9,
+    );
+  }
+}
+
+class _FakeChatApiStreamPartial implements ChatApi {
+  @override
+  Stream<ChatStreamEvent> streamDocumentChat({
+    required String documentId,
+    required String question,
+  }) async* {
+    yield const ChatStreamDelta(text: 'Part');
+    await Future.delayed(const Duration(milliseconds: 150));
+    yield const ChatStreamDone(
+      answer: 'Partial response',
+      sources: [ChatSource(pageNumber: 2, snippet: 'Snippet')],
+      confidence: 0.92,
+    );
+  }
+
+  @override
+  Future<ChatQueryResponseData> queryDocumentChat({
+    required String documentId,
+    required String question,
+  }) async {
+    return const ChatQueryResponseData(
+      answer: 'Partial response',
+      sources: [ChatSource(pageNumber: 2, snippet: 'Snippet')],
+      confidence: 0.92,
+    );
+  }
+}
+
+class _FakeChatApiStreamFailure implements ChatApi {
+  @override
+  Stream<ChatStreamEvent> streamDocumentChat({
+    required String documentId,
+    required String question,
+  }) async* {
+    throw Exception('Stream not available');
+  }
+
+  @override
+  Future<ChatQueryResponseData> queryDocumentChat({
+    required String documentId,
+    required String question,
+  }) async {
+    return const ChatQueryResponseData(
+      answer: 'Fallback reply',
+      sources: [ChatSource(pageNumber: 3, snippet: 'Fallback')],
+      confidence: 0.8,
+    );
+  }
+}
+
 class _FakeChatApiFailure implements ChatApi {
+  @override
+  Stream<ChatStreamEvent> streamDocumentChat({
+    required String documentId,
+    required String question,
+  }) async* {
+    throw Exception('Network error');
+  }
+
   @override
   Future<ChatQueryResponseData> queryDocumentChat({
     required String documentId,

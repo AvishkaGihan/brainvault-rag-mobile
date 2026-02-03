@@ -10,4 +10,10 @@ const chatController = new ChatController();
  */
 router.post("/", chatController.queryDocumentChat);
 
+/**
+ * POST /api/v1/documents/:documentId/chat/stream
+ * Streaming chat endpoint (mounted at /api/v1/documents/:documentId/chat)
+ */
+router.post("/stream", chatController.streamDocumentChat);
+
 export { router as chatRoutes };

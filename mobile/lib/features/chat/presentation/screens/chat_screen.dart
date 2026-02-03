@@ -7,6 +7,7 @@ import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../../shared/widgets/app_bar.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../data/chat_api.dart';
+import '../../data/chat_stream_event.dart';
 import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/chat_message_bubble.dart';
@@ -33,6 +34,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late List<ChatMessage> _messages;
   bool _canSend = false;
   bool _isAwaitingResponse = false;
+  bool _isStreaming = false;
+  int? _streamingMessageIndex;
+  String _streamingText = '';
+  DateTime? _lastStreamScroll;
+  int? _fadeInMessageIndex;
+  double _fadeInOpacity = 1.0;
 
   @override
   void initState() {
@@ -76,12 +83,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (_messages.isEmpty || !_scrollController.hasClients) return;
     // Use animateTo for smoother scrolling with large message lists
     // Add extra offset if thinking indicator is shown to ensure it's fully visible
-    final extraOffset = _isAwaitingResponse ? 60.0 : 0.0;
+    final extraOffset = _isAwaitingResponse && !_isStreaming ? 60.0 : 0.0;
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent + extraOffset,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
+  }
+
+  void _throttledScrollToLatest() {
+    final now = DateTime.now();
+    if (_lastStreamScroll == null ||
+        now.difference(_lastStreamScroll!) >
+            const Duration(milliseconds: 120)) {
+      _lastStreamScroll = now;
+      _scrollToLatestMessage();
+    }
   }
 
   bool _isDocumentUnavailable() {
@@ -141,6 +158,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _messageController.clear();
       _canSend = false;
+      _streamingText = '';
       _messages = [
         ..._messages,
         ChatMessage(
@@ -148,8 +166,107 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           role: ChatMessageRole.user,
           createdAt: DateTime.now(),
         ),
+        ChatMessage(
+          text: '',
+          role: ChatMessageRole.assistant,
+          createdAt: DateTime.now(),
+        ),
       ];
       _isAwaitingResponse = true;
+      _isStreaming = true;
+      _streamingMessageIndex = _messages.length - 1;
+      _fadeInMessageIndex = null;
+      _fadeInOpacity = 1.0;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToLatestMessage();
+    });
+
+    var receivedStreamEvent = false;
+
+    try {
+      await for (final event in chatApi.streamDocumentChat(
+        documentId: documentId,
+        question: text,
+      )) {
+        if (!mounted) return;
+        receivedStreamEvent = true;
+
+        if (event is ChatStreamDelta) {
+          _streamingText += event.text;
+          _updateStreamingMessage(_streamingText, const []);
+          _throttledScrollToLatest();
+        } else if (event is ChatStreamDone) {
+          _finalizeStreamingMessage(event.answer, event.sources);
+          _endStreaming();
+          return;
+        } else if (event is ChatStreamError) {
+          _handleStreamingFailure(event.message);
+          return;
+        }
+      }
+
+      if (!receivedStreamEvent) {
+        throw Exception('Streaming not available');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      if (!receivedStreamEvent && _streamingText.isEmpty) {
+        await _fallbackToNonStream(chatApi, documentId, text);
+        return;
+      }
+      _handleStreamingFailure(_Strings.chatFailureMessage);
+    }
+  }
+
+  void _updateStreamingMessage(String text, List<ChatSource> sources) {
+    final index = _streamingMessageIndex;
+    if (index == null || index < 0 || index >= _messages.length) return;
+
+    final existing = _messages[index];
+    final updated = ChatMessage(
+      text: text,
+      role: ChatMessageRole.assistant,
+      createdAt: existing.createdAt,
+      sources: sources,
+    );
+
+    setState(() {
+      final updatedMessages = List<ChatMessage>.from(_messages);
+      updatedMessages[index] = updated;
+      _messages = updatedMessages;
+    });
+  }
+
+  void _finalizeStreamingMessage(String answer, List<ChatSource> sources) {
+    _streamingText = answer;
+    _updateStreamingMessage(answer, sources);
+  }
+
+  void _endStreaming() {
+    setState(() {
+      _isAwaitingResponse = false;
+      _isStreaming = false;
+      _streamingMessageIndex = null;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToLatestMessage();
+    });
+  }
+
+  Future<void> _fallbackToNonStream(
+    ChatApi chatApi,
+    String documentId,
+    String question,
+  ) async {
+    if (!mounted) return;
+    setState(() {
+      _isStreaming = false;
+      _streamingMessageIndex = null;
+      _streamingText = '';
+      _messages = List<ChatMessage>.from(_messages)..removeLast();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -159,7 +276,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final response = await chatApi.queryDocumentChat(
         documentId: documentId,
-        question: text,
+        question: question,
       );
 
       if (!mounted) return;
@@ -175,9 +292,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ];
         _isAwaitingResponse = false;
+        _fadeInMessageIndex = _messages.length - 1;
+        _fadeInOpacity = 0.0;
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _fadeInOpacity = 1.0;
+        });
         _scrollToLatestMessage();
       });
     } catch (error) {
@@ -185,28 +308,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _isAwaitingResponse = false;
       });
-
-      // Determine user-friendly error message based on error type
-      String errorMessage = _Strings.chatFailureMessage;
-      if (error.toString().contains('SocketException') ||
-          error.toString().contains('TimeoutException') ||
-          error.toString().contains('connection')) {
-        errorMessage = _Strings.networkErrorMessage;
-      } else if (error.toString().contains('401') ||
-          error.toString().contains('unauthorized')) {
-        errorMessage = _Strings.authErrorMessage;
-      } else if (error.toString().contains('429') ||
-          error.toString().contains('rate limit')) {
-        errorMessage = _Strings.rateLimitErrorMessage;
-      } else if (error.toString().contains('500') ||
-          error.toString().contains('server')) {
-        errorMessage = _Strings.serverErrorMessage;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      _showChatError(error);
     }
+  }
+
+  void _handleStreamingFailure(String message) {
+    setState(() {
+      _isAwaitingResponse = false;
+      _isStreaming = false;
+      _streamingMessageIndex = null;
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showChatError(Object error) {
+    // Determine user-friendly error message based on error type
+    String errorMessage = _Strings.chatFailureMessage;
+    if (error.toString().contains('SocketException') ||
+        error.toString().contains('TimeoutException') ||
+        error.toString().contains('connection')) {
+      errorMessage = _Strings.networkErrorMessage;
+    } else if (error.toString().contains('401') ||
+        error.toString().contains('unauthorized')) {
+      errorMessage = _Strings.authErrorMessage;
+    } else if (error.toString().contains('429') ||
+        error.toString().contains('rate limit')) {
+      errorMessage = _Strings.rateLimitErrorMessage;
+    } else if (error.toString().contains('500') ||
+        error.toString().contains('server')) {
+      errorMessage = _Strings.serverErrorMessage;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(errorMessage)));
   }
 
   Widget _buildThinkingIndicator(BuildContext context) {
@@ -243,7 +381,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         : 'Chat';
     final messages = _messages;
     final isSendEnabled = _canSend && !_isAwaitingResponse;
-    final showThinkingIndicator = _isAwaitingResponse;
+    final showThinkingIndicator = _isAwaitingResponse && !_isStreaming;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -285,7 +423,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         return _buildThinkingIndicator(context);
                       }
                       final message = messages[index];
-                      return ChatMessageBubble(message: message);
+                      final showCursor =
+                          _isStreaming && index == _streamingMessageIndex;
+                      final bubble = ChatMessageBubble(
+                        message: message,
+                        showStreamingCursor: showCursor,
+                      );
+                      if (_fadeInMessageIndex == index) {
+                        return AnimatedOpacity(
+                          opacity: _fadeInOpacity,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          child: bubble,
+                        );
+                      }
+                      return bubble;
                     },
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemCount:

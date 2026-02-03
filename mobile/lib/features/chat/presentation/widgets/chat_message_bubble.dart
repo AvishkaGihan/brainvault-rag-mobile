@@ -6,8 +6,13 @@ import 'source_citation_chip.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;
+  final bool showStreamingCursor;
 
-  const ChatMessageBubble({super.key, required this.message});
+  const ChatMessageBubble({
+    super.key,
+    required this.message,
+    this.showStreamingCursor = false,
+  });
 
   void _showSourcePreviewSheet(BuildContext context, ChatSource source) {
     HapticFeedback.selectionClick();
@@ -31,10 +36,29 @@ class ChatMessageBubble extends StatelessWidget {
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSurfaceVariant;
     final timeColor = textColor.withValues(alpha: 0.7);
+    final cursorColor = textColor.withValues(alpha: 0.8);
     final dateTime = message.createdAt ?? DateTime.now();
     final timeString = MaterialLocalizations.of(
       context,
     ).formatTimeOfDay(TimeOfDay.fromDateTime(dateTime));
+
+    Widget buildBlinkingCursor() {
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.3, end: 1.0),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Text(
+              '▍',
+              key: const Key('chat_stream_cursor'),
+              style: TextStyle(color: cursorColor),
+            ),
+          );
+        },
+      );
+    }
 
     return Align(
       key: const Key('chat_message_bubble_align'),
@@ -64,8 +88,18 @@ class ChatMessageBubble extends StatelessWidget {
                       ? CrossAxisAlignment.end
                       : CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      message.text,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: message.text),
+                          if (showStreamingCursor)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.baseline,
+                              baseline: TextBaseline.alphabetic,
+                              child: buildBlinkingCursor(),
+                            ),
+                        ],
+                      ),
                       style: TextStyle(color: textColor),
                       softWrap: true,
                     ),
