@@ -4,19 +4,23 @@ enum ChatMessageRole { user, assistant }
 
 @immutable
 class ChatSource {
-  final String label;
+  final int pageNumber;
+  final String? snippet;
 
-  const ChatSource({required this.label});
+  const ChatSource({required this.pageNumber, this.snippet});
+
+  String get label => 'Source: Page $pageNumber';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ChatSource &&
           runtimeType == other.runtimeType &&
-          label == other.label;
+          pageNumber == other.pageNumber &&
+          snippet == other.snippet;
 
   @override
-  int get hashCode => label.hashCode;
+  int get hashCode => pageNumber.hashCode ^ snippet.hashCode;
 }
 
 /// Represents a single message in a chat conversation

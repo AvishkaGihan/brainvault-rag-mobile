@@ -1,7 +1,7 @@
 /**
  * Large Language Model Configuration
  * Factory for creating LLM instances with consistent configuration
- * Currently configured for Google Gemini Pro
+ * Currently configured for Google Gemini 2.5 Flash
  */
 
 import {
@@ -19,7 +19,7 @@ import { AppError, ERROR_CODES } from "../types/api.types";
  */
 export const createLLM = () => {
   return new ChatGoogleGenerativeAI({
-    model: "gemini-pro",
+    model: "gemini-2.5-flash",
     apiKey: env.googleApiKey,
     temperature: 0.3,
   });

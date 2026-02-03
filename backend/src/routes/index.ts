@@ -18,6 +18,7 @@
 import { Router } from "express";
 import { router as healthRoutes } from "./health.routes";
 import { documentRoutes } from "./document.routes";
+import { chatRoutes } from "./chat.routes";
 import { verifyAuth } from "../middleware/auth.middleware";
 import {
   generalApiLimiter,
@@ -51,6 +52,12 @@ router.use(generalApiLimiter);
  * POST /api/v1/documents/text - Create text document
  */
 router.use("/v1/documents", documentRoutes);
+
+/**
+ * Chat routes (Story 5.4)
+ * POST /api/v1/documents/:documentId/chat
+ */
+router.use("/v1/documents/:documentId/chat", chatApiLimiter, chatRoutes);
 
 /**
  * Future routes will be added here:

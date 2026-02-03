@@ -6,6 +6,7 @@ import '../../../documents/domain/entities/document.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../../shared/widgets/app_bar.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../data/chat_api.dart';
 import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/chat_message_bubble.dart';
@@ -124,8 +125,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final documentId = widget.documentId;
+    if (documentId == null || documentId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(_Strings.noDocumentSelectedMessage)),
+      );
+      return;
+    }
+
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
+
+    final chatApi = ref.read(chatApiProvider);
 
     setState(() {
       _messageController.clear();
@@ -145,27 +156,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollToLatestMessage();
     });
 
-    // Story 5.3: Placeholder delay to simulate thinking time before Story 5.4 backend integration
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
+    try {
+      final response = await chatApi.queryDocumentChat(
+        documentId: documentId,
+        question: text,
+      );
 
-    // Re-check if document still exists before clearing thinking indicator
-    // This prevents orphaned messages if document was deleted during the delay
-    if (_isDocumentUnavailable()) {
+      if (!mounted) return;
+
+      setState(() {
+        _messages = [
+          ..._messages,
+          ChatMessage(
+            text: response.answer,
+            role: ChatMessageRole.assistant,
+            createdAt: DateTime.now(),
+            sources: response.sources,
+          ),
+        ];
+        _isAwaitingResponse = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToLatestMessage();
+      });
+    } catch (error) {
+      if (!mounted) return;
       setState(() {
         _isAwaitingResponse = false;
-        // Remove the orphaned user message since we can't get a response
-        if (_messages.isNotEmpty) {
-          _messages = _messages.sublist(0, _messages.length - 1);
-        }
       });
-      _handleMissingDocument();
-      return;
-    }
 
-    setState(() {
-      _isAwaitingResponse = false;
-    });
+      // Determine user-friendly error message based on error type
+      String errorMessage = _Strings.chatFailureMessage;
+      if (error.toString().contains('SocketException') ||
+          error.toString().contains('TimeoutException') ||
+          error.toString().contains('connection')) {
+        errorMessage = _Strings.networkErrorMessage;
+      } else if (error.toString().contains('401') ||
+          error.toString().contains('unauthorized')) {
+        errorMessage = _Strings.authErrorMessage;
+      } else if (error.toString().contains('429') ||
+          error.toString().contains('rate limit')) {
+        errorMessage = _Strings.rateLimitErrorMessage;
+      } else if (error.toString().contains('500') ||
+          error.toString().contains('server')) {
+        errorMessage = _Strings.serverErrorMessage;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    }
   }
 
   Widget _buildThinkingIndicator(BuildContext context) {
@@ -270,6 +311,18 @@ class _Strings {
   static const String thinkingText = 'Thinking...';
   static const String missingDocumentMessage =
       'This document is no longer available. Returning to Documents.';
+  static const String noDocumentSelectedMessage =
+      'Select a document to start chatting.';
+  static const String chatFailureMessage =
+      'Unable to get an answer right now. Please try again.';
+  static const String networkErrorMessage =
+      'No internet connection. Check your network and try again.';
+  static const String authErrorMessage =
+      'Session expired. Please log in again.';
+  static const String rateLimitErrorMessage =
+      'Too many requests. Please wait a moment.';
+  static const String serverErrorMessage =
+      'Server error. Please try again later.';
 }
 
 enum _ChatMenuAction { newChat }
